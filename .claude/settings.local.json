@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /Users/ayushmukherjee/CODES/MyUniConnect status)",
+      "Bash(git -C /Users/ayushmukherjee/CODES ls-remote https://github.com/ayush-ui/myuniconnect.git)",
+      "Bash(git -C /Users/ayushmukherjee/CODES ls-remote https://github.com/ayush-ui/MyUniConnect.git)",
+      "Bash(pnpm approve-builds *)",
+      "Bash(pnpm install *)",
+      "Bash(pnpm --filter api exec pnpm approve-builds)",
+      "Bash(npx prisma *)"
+    ]
+  }
+}

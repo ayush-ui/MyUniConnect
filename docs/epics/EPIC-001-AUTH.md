@@ -1,0 +1,266 @@
+# EPIC-001 — Authentication & Identity
+
+## Goal
+
+A student can register with a verified university email, confirm their address, and log in. No feature of the platform is accessible to unverified users.
+
+## Business Rules
+
+1. Only email addresses from registered university domains may register.
+2. A user account is created in an **unverified** state; they cannot interact with any feature until email is confirmed.
+3. Verification tokens expire after **24 hours**. A new one can be requested after expiry.
+4. Passwords must be at least 8 characters, contain at least one uppercase letter, one number, and one special character.
+5. A registered but unverified account that has not verified within 7 days is soft-deleted (purge job, Phase 2).
+6. A user may belong to only one university (derived from their email domain).
+7. Refresh tokens are single-use (rotation on every refresh).
+8. Access tokens expire in **15 minutes**; refresh tokens in **7 days**.
+9. On logout, the refresh token is invalidated.
+
+## Out of Scope (Iteration 1)
+
+- Social / OAuth login
+- Multi-factor authentication
+- University SSO / SAML
+- Password-based account recovery (stub only — "contact support" message)
+
+---
+
+## Data Model
+
+### `University`
+```
+id            UUID PK
+name          TEXT NOT NULL
+email_domain  TEXT NOT NULL UNIQUE   -- e.g. "tu-ilmenau.de"
+country       TEXT NOT NULL
+active        BOOLEAN DEFAULT true
+created_at    TIMESTAMPTZ
+updated_at    TIMESTAMPTZ
+```
+
+### `User`
+```
+id                  UUID PK
+email               TEXT NOT NULL UNIQUE
+password_hash       TEXT NOT NULL
+first_name          TEXT NOT NULL
+last_name           TEXT NOT NULL
+university_id       UUID FK → University
+email_verified      BOOLEAN DEFAULT false
+email_verified_at   TIMESTAMPTZ
+role                ENUM('student', 'admin') DEFAULT 'student'
+deleted_at          TIMESTAMPTZ          -- soft delete
+created_at          TIMESTAMPTZ
+updated_at          TIMESTAMPTZ
+```
+
+### `EmailVerificationToken`
+```
+id          UUID PK
+user_id     UUID FK → User
+token_hash  TEXT NOT NULL               -- bcrypt hash of the raw token
+expires_at  TIMESTAMPTZ NOT NULL
+used_at     TIMESTAMPTZ                 -- null = unused
+created_at  TIMESTAMPTZ
+```
+
+### `RefreshToken`
+```
+id          UUID PK
+user_id     UUID FK → User
+token_hash  TEXT NOT NULL
+expires_at  TIMESTAMPTZ NOT NULL
+revoked_at  TIMESTAMPTZ
+created_at  TIMESTAMPTZ
+```
+
+---
+
+## Value Objects
+
+| VO | Status | Notes |
+|----|--------|-------|
+| `Email` | **Implemented** | Validates format; extracts domain; checks against university whitelist |
+| `UniversityDomain` | **Implemented** | Wraps domain string; used in `Email` construction |
+| `Password` (plain) | **Not a VO** | Plain string; validated via Zod schema at presentation layer |
+
+---
+
+## Use Cases & Specs
+
+### UC-1.1 `RegisterUser`
+
+**Input:** `{ email, password, firstName, lastName }`
+
+**Flow:**
+1. Validate `email` format.
+2. Extract domain; query `universities` table for a match with `active = true`.
+3. If no match → throw `UNIVERSITY_NOT_SUPPORTED`.
+4. Check no existing non-deleted user with that email → throw `EMAIL_ALREADY_REGISTERED` if found.
+5. Hash password (bcrypt, cost 12).
+6. Create `User` record (`email_verified = false`).
+7. Generate a random 32-byte token; store its hash in `EmailVerificationToken` (expires in 24h).
+8. Send verification email (async, fire-and-forget — email service failure does not fail registration).
+9. Return `{ userId, message: "Check your email to verify your account" }`.
+
+**Error codes:**
+- `INVALID_EMAIL_FORMAT`
+- `UNIVERSITY_NOT_SUPPORTED`
+- `EMAIL_ALREADY_REGISTERED`
+- `WEAK_PASSWORD`
+
+**Spec file:** `apps/api/src/application/auth/register-user.use-case.spec.ts`
+
+---
+
+### UC-1.2 `VerifyEmail`
+
+**Input:** `{ token: string }`
+
+**Flow:**
+1. Find token record where `used_at IS NULL AND expires_at > NOW()`.
+2. Compare raw token to `token_hash` (bcrypt compare).
+3. If invalid or expired → throw `INVALID_OR_EXPIRED_TOKEN`.
+4. Mark `used_at = NOW()` on token.
+5. Mark `user.email_verified = true`, `user.email_verified_at = NOW()`.
+6. Return `{ message: "Email verified successfully" }`.
+
+**Error codes:**
+- `INVALID_OR_EXPIRED_TOKEN`
+
+**Edge cases:**
+- Token already used → `INVALID_OR_EXPIRED_TOKEN` (do not reveal it was used)
+- User already verified → still mark token used, return success (idempotent)
+
+**Spec file:** `apps/api/src/application/auth/verify-email.use-case.spec.ts`
+
+---
+
+### UC-1.3 `ResendVerificationEmail`
+
+**Input:** `{ email: string }`
+
+**Flow:**
+1. Find user by email. If not found → return success anyway (don't reveal user existence).
+2. If already verified → return success (no email sent).
+3. Invalidate existing unused tokens for user (set `used_at = NOW()`).
+4. Generate new token, store hash, send email.
+5. Return `{ message: "If your email is registered and unverified, a new link was sent" }`.
+
+**Rate limit:** Max 3 resend requests per hour per email address.
+
+**Spec file:** `apps/api/src/application/auth/resend-verification.use-case.spec.ts`
+
+---
+
+### UC-1.4 `Login`
+
+**Input:** `{ email, password }`
+
+**Flow:**
+1. Find user by email (not soft-deleted).
+2. If not found → throw `INVALID_CREDENTIALS` (timing-safe — always run bcrypt compare).
+3. Compare password hash. If mismatch → throw `INVALID_CREDENTIALS`.
+4. If `email_verified = false` → throw `EMAIL_NOT_VERIFIED`.
+5. Generate access JWT (15m, payload: `{ sub: userId, role }`).
+6. Generate refresh token (random 32 bytes); store hash in `RefreshToken` (7d expiry).
+7. Return `{ accessToken }`. Set refresh token in httpOnly, Secure, SameSite=Strict cookie.
+
+**Error codes:**
+- `INVALID_CREDENTIALS`
+- `EMAIL_NOT_VERIFIED`
+
+**Spec file:** `apps/api/src/application/auth/login.use-case.spec.ts`
+
+---
+
+### UC-1.5 `RefreshAccessToken`
+
+**Input:** refresh token from cookie
+
+**Flow:**
+1. Find `RefreshToken` record by token hash.
+2. Validate: not revoked, not expired.
+3. Revoke the old token (`revoked_at = NOW()`).
+4. Issue new access token + new refresh token (rotation).
+5. Return new access token; set new refresh cookie.
+
+**Error codes:**
+- `INVALID_REFRESH_TOKEN`
+- `REFRESH_TOKEN_EXPIRED`
+
+**Spec file:** `apps/api/src/application/auth/refresh-token.use-case.spec.ts`
+
+---
+
+### UC-1.6 `Logout`
+
+**Input:** refresh token from cookie
+
+**Flow:**
+1. Find and revoke the refresh token (`revoked_at = NOW()`).
+2. Clear the cookie.
+3. Return 200 (even if token not found — idempotent).
+
+**Spec file:** `apps/api/src/application/auth/logout.use-case.spec.ts`
+
+---
+
+## API Endpoints
+
+| Method | Path | Auth | Use Case |
+|--------|------|------|---------|
+| POST | `/auth/register` | None | UC-1.1 |
+| GET | `/auth/verify-email` | None | UC-1.2 |
+| POST | `/auth/resend-verification` | None | UC-1.3 |
+| POST | `/auth/login` | None | UC-1.4 |
+| POST | `/auth/refresh` | Cookie | UC-1.5 |
+| POST | `/auth/logout` | Cookie | UC-1.6 |
+| GET | `/auth/me` | Bearer | Returns current user profile |
+
+---
+
+## Frontend Flows
+
+### Registration Page (`/register`)
+- Fields: First Name, Last Name, Email, Password, Confirm Password
+- Client-side: password strength indicator, email domain hint ("Use your university email")
+- On submit: `POST /auth/register`
+- Success → redirect to `/register/check-email` (informational page)
+- Error → inline field errors
+
+### Email Verification Landing (`/verify-email`)
+- Reads `?token=` from URL
+- Calls `GET /auth/verify-email?token=...`
+- Success → redirect to `/login?verified=true`
+- Error → show "Link expired" with "Resend verification email" form
+
+### Login Page (`/login`)
+- Fields: Email, Password
+- `POST /auth/login`
+- Success → redirect to `/dashboard`
+- `EMAIL_NOT_VERIFIED` → show banner with "Resend verification" link
+
+---
+
+## Acceptance Criteria
+
+- [ ] User with @tu-ilmenau.de email can register and receives a verification email
+- [ ] User with unsupported domain sees a clear error message
+- [ ] Verification link works once; second click shows "link expired or already used"
+- [ ] Expired token (>24h) shows "link expired" with option to resend
+- [ ] Unverified user cannot call any authenticated endpoint (401)
+- [ ] Login with wrong password shows "Invalid credentials" (not which field is wrong)
+- [ ] Refresh token rotates on every use
+- [ ] Logout invalidates the refresh token server-side
+- [ ] All unit specs pass
+- [ ] All integration specs pass against test database
+
+---
+
+## Seed Data
+
+```sql
+INSERT INTO universities (id, name, email_domain, country, active)
+VALUES (gen_random_uuid(), 'TU Ilmenau', 'tu-ilmenau.de', 'Germany', true);
+```

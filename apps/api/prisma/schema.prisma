@@ -1,0 +1,292 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Auth & Identity ────────────────────────────────────────────────────────
+
+model University {
+  id          String   @id @default(uuid())
+  name        String
+  emailDomain String   @unique @map("email_domain")
+  country     String
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users User[]
+
+  @@map("universities")
+}
+
+enum UserRole {
+  student
+  admin
+}
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  passwordHash    String    @map("password_hash")
+  firstName       String    @map("first_name")
+  lastName        String    @map("last_name")
+  universityId    String    @map("university_id")
+  emailVerified   Boolean   @default(false) @map("email_verified")
+  emailVerifiedAt DateTime? @map("email_verified_at")
+  role            UserRole  @default(student)
+  deletedAt       DateTime? @map("deleted_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  university              University               @relation(fields: [universityId], references: [id])
+  emailVerificationTokens EmailVerificationToken[]
+  refreshTokens           RefreshToken[]
+  marketplaceListings     MarketplaceListing[]
+  createdClubs            Club[]
+  clubMemberships         ClubMembership[]
+  clubPosts               ClubPost[]
+  housingListings         HousingListing[]
+
+  @@index([universityId])
+  @@map("users")
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_verification_tokens")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ─── Marketplace ────────────────────────────────────────────────────────────
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  listings MarketplaceListing[]
+
+  @@map("categories")
+}
+
+enum ItemCondition {
+  new
+  like_new
+  good
+  fair
+  poor
+}
+
+enum ListingVisibility {
+  students_only
+  public
+}
+
+enum MarketplaceListingStatus {
+  active
+  reserved
+  sold
+  deactivated
+}
+
+model MarketplaceListing {
+  id          String                   @id @default(uuid())
+  sellerId    String                   @map("seller_id")
+  categoryId  String                   @map("category_id")
+  title       String
+  description String
+  priceCents  Int                      @map("price_cents")
+  currency    String                   @default("EUR")
+  condition   ItemCondition
+  visibility  ListingVisibility        @default(students_only)
+  status      MarketplaceListingStatus @default(active)
+  location    String?
+  deletedAt   DateTime?                @map("deleted_at")
+  createdAt   DateTime                 @default(now()) @map("created_at")
+  updatedAt   DateTime                 @updatedAt @map("updated_at")
+
+  seller   User          @relation(fields: [sellerId], references: [id])
+  category Category      @relation(fields: [categoryId], references: [id])
+  images   ListingImage[]
+
+  @@index([sellerId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([visibility])
+  @@map("marketplace_listings")
+}
+
+model ListingImage {
+  id           String   @id @default(uuid())
+  listingId    String   @map("listing_id")
+  s3Key        String   @map("s3_key")
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  listing MarketplaceListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@map("listing_images")
+}
+
+// ─── Clubs ──────────────────────────────────────────────────────────────────
+
+enum ClubVisibility {
+  university_only
+  open
+}
+
+enum ClubStatus {
+  active
+  dissolved
+}
+
+model Club {
+  id          String         @id @default(uuid())
+  universityId String        @map("university_id")
+  name        String
+  description String
+  visibility  ClubVisibility @default(university_only)
+  createdById String         @map("created_by")
+  memberCount Int            @default(1) @map("member_count")
+  status      ClubStatus     @default(active)
+  deletedAt   DateTime?      @map("deleted_at")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  createdBy   User             @relation(fields: [createdById], references: [id])
+  memberships ClubMembership[]
+  posts       ClubPost[]
+
+  @@unique([universityId, name])
+  @@index([universityId])
+  @@map("clubs")
+}
+
+enum ClubRole {
+  admin
+  member
+}
+
+model ClubMembership {
+  id       String    @id @default(uuid())
+  clubId   String    @map("club_id")
+  userId   String    @map("user_id")
+  role     ClubRole  @default(member)
+  joinedAt DateTime  @default(now()) @map("joined_at")
+  leftAt   DateTime? @map("left_at")
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([clubId])
+  @@index([userId])
+  @@map("club_memberships")
+}
+
+model ClubPost {
+  id        String    @id @default(uuid())
+  clubId    String    @map("club_id")
+  authorId  String    @map("author_id")
+  content   String
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  club   Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id])
+
+  @@index([clubId])
+  @@map("club_posts")
+}
+
+// ─── Housing ────────────────────────────────────────────────────────────────
+
+enum HousingType {
+  full_apartment
+  room_in_shared_flat
+  sublet
+  short_term
+  flatmate_wanted
+}
+
+enum HousingListingStatus {
+  available
+  reserved
+  rented
+  deactivated
+}
+
+model HousingListing {
+  id             String               @id @default(uuid())
+  landlordId     String               @map("landlord_id")
+  type           HousingType
+  title          String
+  description    String
+  rentCents      Int                  @map("rent_cents")
+  currency       String               @default("EUR")
+  depositCents   Int?                 @map("deposit_cents")
+  areaSqm        Decimal?             @map("area_sqm") @db.Decimal(6, 2)
+  rooms          Decimal?             @db.Decimal(4, 1)
+  city           String
+  district       String?
+  addressFull    String               @map("address_full")
+  availableFrom  DateTime             @map("available_from") @db.Date
+  availableUntil DateTime?            @map("available_until") @db.Date
+  furnished      Boolean              @default(false)
+  petsAllowed    Boolean              @default(false) @map("pets_allowed")
+  contactEmail   String               @map("contact_email")
+  contactPhone   String?              @map("contact_phone")
+  status         HousingListingStatus @default(available)
+  deletedAt      DateTime?            @map("deleted_at")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+
+  landlordUser User          @relation(fields: [landlordId], references: [id])
+  images       HousingImage[]
+
+  @@index([landlordId])
+  @@index([status])
+  @@index([city])
+  @@map("housing_listings")
+}
+
+model HousingImage {
+  id           String   @id @default(uuid())
+  listingId    String   @map("listing_id")
+  s3Key        String   @map("s3_key")
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  listing HousingListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@map("housing_images")
+}

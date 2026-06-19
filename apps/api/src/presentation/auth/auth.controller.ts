@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query, Res } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -8,14 +8,31 @@ import {
   ApiConflictResponse,
   ApiUnauthorizedResponse,
   ApiCookieAuth,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { RegisterUserUseCase } from '@application/auth/register-user.use-case';
 import { VerifyEmailUseCase } from '@application/auth/verify-email.use-case';
 import { LoginUseCase } from '@application/auth/login.use-case';
+import { RefreshAccessTokenUseCase } from '@application/auth/refresh-token.use-case';
+import { LogoutUseCase } from '@application/auth/logout.use-case';
+import { GetMeUseCase } from '@application/auth/get-me.use-case';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { CurrentUser } from './decorators/current-user.decorator';
+import { TokenPayload } from '@application/auth/token.service.interface';
 import { RegisterDto, RegisterResponseDto } from './dto/register.dto';
 import { VerifyEmailQueryDto, VerifyEmailResponseDto } from './dto/verify-email.dto';
 import { LoginDto, LoginResponseDto } from './dto/login.dto';
+import { MeResponseDto } from './dto/me.dto';
+
+const REFRESH_COOKIE = 'refresh_token';
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict' as const,
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+  path: '/api/v1/auth',
+};
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -24,6 +41,9 @@ export class AuthController {
     private readonly registerUser: RegisterUserUseCase,
     private readonly verifyEmail: VerifyEmailUseCase,
     private readonly login: LoginUseCase,
+    private readonly refreshAccessToken: RefreshAccessTokenUseCase,
+    private readonly logout: LogoutUseCase,
+    private readonly getMe: GetMeUseCase,
   ) {}
 
   @Post('register')
@@ -47,7 +67,7 @@ export class AuthController {
   @ApiQuery({ name: 'token', description: 'The one-time verification token from the email link' })
   @ApiResponse({ status: 200, description: 'Email verified successfully.', type: VerifyEmailResponseDto })
   @ApiBadRequestResponse({ description: 'Token is invalid or has already been used / expired' })
-  async verifyEmail(@Query() query: VerifyEmailQueryDto): Promise<VerifyEmailResponseDto> {
+  async verifyEmailHandler(@Query() query: VerifyEmailQueryDto): Promise<VerifyEmailResponseDto> {
     return this.verifyEmail.execute(query.token);
   }
 
@@ -67,14 +87,48 @@ export class AuthController {
       password: dto.password,
     });
 
-    res.cookie('refresh_token', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/api/v1/auth',
-    });
-
+    res.cookie(REFRESH_COOKIE, refreshToken, COOKIE_OPTIONS);
     return { accessToken };
+  }
+
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @ApiCookieAuth('refresh_token')
+  @ApiOperation({ summary: 'Refresh access token', description: 'Rotates the refresh token and issues a new access token. Requires a valid refresh_token cookie.' })
+  @ApiResponse({ status: 200, description: 'New access token issued; refresh token rotated in cookie.', type: LoginResponseDto })
+  @ApiUnauthorizedResponse({ description: 'Refresh token is missing, invalid, or expired' })
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<LoginResponseDto> {
+    const rawToken = req.cookies?.[REFRESH_COOKIE] as string | undefined;
+    const { accessToken, refreshToken } = await this.refreshAccessToken.execute(rawToken);
+    res.cookie(REFRESH_COOKIE, refreshToken, COOKIE_OPTIONS);
+    return { accessToken };
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @ApiCookieAuth('refresh_token')
+  @ApiOperation({ summary: 'Logout', description: 'Revokes the refresh token and clears the cookie.' })
+  @ApiResponse({ status: 200, description: 'Logged out successfully.' })
+  async logoutUser(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<void> {
+    const rawToken = req.cookies?.[REFRESH_COOKIE] as string | undefined;
+    await this.logout.execute(rawToken);
+    res.clearCookie(REFRESH_COOKIE, { path: COOKIE_OPTIONS.path });
+  }
+
+  @Get('me')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get current user', description: 'Returns the authenticated user profile. Requires a valid access token.' })
+  @ApiResponse({ status: 200, description: 'Current user profile.', type: MeResponseDto })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
+  async me(@CurrentUser() user: TokenPayload): Promise<MeResponseDto> {
+    return this.getMe.execute(user.sub);
   }
 }

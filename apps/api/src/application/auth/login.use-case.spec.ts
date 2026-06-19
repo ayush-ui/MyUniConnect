@@ -45,6 +45,7 @@ function makeRepos() {
   const tokenService: jest.Mocked<ITokenService> = {
     signAccessToken: jest.fn().mockReturnValue('access.jwt.token'),
     signRefreshToken: jest.fn().mockReturnValue('raw-refresh-token'),
+    verifyAccessToken: jest.fn(),
   };
   return { userRepo, refreshTokenRepo, tokenService };
 }

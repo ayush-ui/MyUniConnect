@@ -28,10 +28,10 @@ A user can register with a TU Ilmenau email, verify it, and post a marketplace i
 | 1.4 | User registration use case + spec | `[x]` | RegisterUserUseCase + 10 tests |
 | 1.5 | Email verification token — send + verify | `[x]` | VerifyEmailUseCase + 7 unit + 4 integration tests; Swagger docs; bcryptjs |
 | 1.6 | Login use case + JWT issuance | `[x]` | LoginUseCase + ITokenService + NestTokenService; 11 unit + 5 integration tests; POST /api/v1/auth/login; httpOnly refresh_token cookie |
-| 1.7 | Refresh token + logout | `[ ]` | |
-| 1.8 | Auth guard (NestJS) | `[ ]` | |
-| 1.9 | Registration + login UI (Next.js) | `[ ]` | |
-| 1.10 | Email verification landing page | `[ ]` | |
+| 1.7 | Refresh token + logout | `[x]` | RefreshAccessTokenUseCase + LogoutUseCase; POST /auth/refresh (token rotation) + POST /auth/logout; opaque random refresh tokens; 8 unit + 8 integration tests |
+| 1.8 | Auth guard (NestJS) | `[x]` | JwtAuthGuard + CurrentUser decorator + GET /auth/me (GetMeUseCase); verifyAccessToken on ITokenService; 6 guard unit tests + 3 use-case unit tests |
+| 1.9 | Registration + login UI (Next.js) | `[x]` | /register (password strength meter, inline errors), /login (resend-verification banner), /register/check-email, /dashboard stub |
+| 1.10 | Email verification landing page | `[x]` | /verify-email: auto-verifies on load, success redirect, expired-link resend form |
 
 ### Epic 2 — Marketplace (Buy & Sell)
 > File: `docs/epics/EPIC-002-MARKETPLACE.md`

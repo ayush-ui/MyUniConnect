@@ -44,6 +44,7 @@ Items here are known shortcuts or deferred improvements. Each entry has a label:
 | DEBT-004 | Messaging | "Contact seller" is a stub (mailto link) | Iteration 2 full messaging epic |
 | DEBT-005 | Notifications | No real-time — polling only on initial build | Iteration 2 notification epic |
 | DEBT-006 | Email | StubEmailService logs to console; no real SMTP | Before any production deployment |
+| DEBT-007 | Auth | `ITokenService.signRefreshToken` accepts a `TokenPayload` param that is currently unused (tokens are opaque random bytes) | Clean up interface in Iteration 2 — remove param or replace with a dedicated `generateRefreshToken(): string` method |
 
 ---
 

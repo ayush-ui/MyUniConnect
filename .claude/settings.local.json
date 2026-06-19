@@ -7,7 +7,18 @@
       "Bash(pnpm approve-builds *)",
       "Bash(pnpm install *)",
       "Bash(pnpm --filter api exec pnpm approve-builds)",
-      "Bash(npx prisma *)"
+      "Bash(npx prisma *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git remote *)",
+      "Bash(git push *)",
+      "Bash(docker --version)",
+      "Bash(docker compose *)",
+      "Bash(pnpm --filter api test)",
+      "Bash(pnpm rebuild *)",
+      "Bash(pnpm --filter api test:integration)",
+      "Bash(DATABASE_URL=\"postgresql://myuniconnect:myuniconnect@localhost:5433/myuniconnect_test\" npx prisma migrate dev --name init --schema=prisma/schema.prisma)",
+      "Bash(git add *)",
+      "Bash(netstat -tlnp)"
     ]
   }
 }

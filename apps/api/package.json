@@ -9,6 +9,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
+    "test:integration": "jest --config jest.integration.config.ts --runInBand",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "format": "prettier --write \"src/**/*.ts\""
   },
@@ -19,11 +20,14 @@
     "@nestjs/jwt": "^10.0.0",
     "@nestjs/passport": "^10.0.0",
     "@nestjs/platform-express": "^10.0.0",
+    "@nestjs/swagger": "^7.0.0",
     "@nestjs/throttler": "^5.0.0",
     "@prisma/client": "^5.0.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.0",
     "passport": "^0.6.0",
     "passport-jwt": "^4.0.0",
-    "bcrypt": "^5.1.0",
+    "bcryptjs": "^2.4.3",
     "zod": "^3.22.0",
     "nodemailer": "^6.9.0",
     "@aws-sdk/client-s3": "^3.0.0",
@@ -32,11 +36,14 @@
     "rxjs": "^7.8.0",
     "cookie-parser": "^1.4.6"
   },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
     "@nestjs/schematics": "^10.0.0",
     "@nestjs/testing": "^10.0.0",
-    "@types/bcrypt": "^5.0.0",
+    "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.6",
     "@types/jest": "^29.5.0",
     "@types/node": "^20.0.0",
@@ -56,6 +63,7 @@
     "moduleFileExtensions": ["js", "json", "ts"],
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
+    "testPathIgnorePatterns": ["\\.integration\\.spec\\.ts$"],
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },

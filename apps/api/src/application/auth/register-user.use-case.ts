@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { z } from 'zod';
 import { Email } from '../../domain/value-objects/email.vo';
@@ -10,6 +10,7 @@ import {
   EMAIL_VERIFICATION_TOKEN_REPOSITORY,
 } from '../../domain/repositories/email-verification-token.repository.interface';
 import { AppError, ConflictError, ValidationError } from '../../domain/errors/app-error';
+import { IEmailService, EMAIL_SERVICE } from './email.service.interface';
 
 const RegisterSchema = z.object({
   email: z.string().min(1),
@@ -34,12 +35,6 @@ export interface RegisterUserOutput {
   userId: string;
   message: string;
 }
-
-export interface IEmailService {
-  sendVerificationEmail(to: string, token: string): Promise<void>;
-}
-
-export const EMAIL_SERVICE = Symbol('IEmailService');
 
 @Injectable()
 export class RegisterUserUseCase {
@@ -80,7 +75,8 @@ export class RegisterUserUseCase {
     });
 
     const rawToken = crypto.randomBytes(32).toString('hex');
-    const tokenHash = await bcrypt.hash(rawToken, 10);
+    // SHA-256 (not bcrypt) so the hash is deterministic and lookup-able by value
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     await this.tokenRepo.create(user.id, tokenHash, expiresAt);

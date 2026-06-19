@@ -1,4 +1,5 @@
-import { RegisterUserUseCase, EMAIL_SERVICE } from './register-user.use-case';
+import { RegisterUserUseCase } from './register-user.use-case';
+import { EMAIL_SERVICE } from './email.service.interface';
 import { IUserRepository, USER_REPOSITORY } from '../../domain/repositories/user.repository.interface';
 import { IUniversityRepository, UNIVERSITY_REPOSITORY } from '../../domain/repositories/university.repository.interface';
 import {

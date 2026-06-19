@@ -27,7 +27,7 @@ A user can register with a TU Ilmenau email, verify it, and post a marketplace i
 | 1.3 | University domain validation (TU Ilmenau seed) | `[x]` | Seed file created |
 | 1.4 | User registration use case + spec | `[x]` | RegisterUserUseCase + 10 tests |
 | 1.5 | Email verification token — send + verify | `[x]` | VerifyEmailUseCase + 7 unit + 4 integration tests; Swagger docs; bcryptjs |
-| 1.6 | Login use case + JWT issuance | `[ ]` | |
+| 1.6 | Login use case + JWT issuance | `[x]` | LoginUseCase + ITokenService + NestTokenService; 11 unit + 5 integration tests; POST /api/v1/auth/login; httpOnly refresh_token cookie |
 | 1.7 | Refresh token + logout | `[ ]` | |
 | 1.8 | Auth guard (NestJS) | `[ ]` | |
 | 1.9 | Registration + login UI (Next.js) | `[ ]` | |

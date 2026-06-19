@@ -43,6 +43,7 @@ Items here are known shortcuts or deferred improvements. Each entry has a label:
 | DEBT-003 | Search | Listing search is simple ILIKE — no ranking | INFRA-004 |
 | DEBT-004 | Messaging | "Contact seller" is a stub (mailto link) | Iteration 2 full messaging epic |
 | DEBT-005 | Notifications | No real-time — polling only on initial build | Iteration 2 notification epic |
+| DEBT-006 | Email | StubEmailService logs to console; no real SMTP | Before any production deployment |
 
 ---
 

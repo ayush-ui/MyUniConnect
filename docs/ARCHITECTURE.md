@@ -82,23 +82,29 @@ Value objects add type safety but cost complexity. We defer most; we implement t
 ```
 POST /auth/register
   → validate email domain against universities table
+  → hash password with bcryptjs (12 rounds)
   → create unverified user
-  → send verification email with signed token (JWT, 24h TTL)
+  → generate random 32-byte hex token; store SHA-256(token) in DB (24h TTL)
+  → send verification email with raw token (fire-and-forget via StubEmailService)
 
 GET /auth/verify-email?token=...
-  → verify token signature + expiry
-  → mark user as verified
-  → return session JWT
+  → SHA-256(token) → findUnusedByHash (usedAt IS NULL AND expiresAt > now)
+  → mark token used, mark user emailVerified=true
 
 POST /auth/login
   → check user exists + is verified
-  → check password (bcrypt)
+  → check password (bcryptjs)
   → return access token (15m) + refresh token (7d, httpOnly cookie)
 
 POST /auth/refresh
-  → validate refresh token
-  → return new access token
+  → validate refresh token (SHA-256 hash lookup, same pattern as email token)
+  → return new access token, rotate refresh token
 ```
+
+> **Token hashing rule**: Use `crypto.createHash('sha256')` for all stored tokens
+> (verification, refresh). Never use bcrypt for tokens — bcrypt salts make it
+> non-deterministic, so you cannot look up a token by its value. bcrypt is only
+> for passwords.
 
 ---
 
@@ -129,6 +135,9 @@ Controllers catch `AppError` and map to HTTP responses. Unexpected errors are ca
 | E2E | Playwright | Critical user flows (register → verify → post listing) |
 
 - Each use case has a `.spec.ts` file in the same directory
+- Test DB (`postgres_test`) runs in Docker on port 5433; dev DB uses 5432
+- `jest.integration.config.ts` runs `*.integration.spec.ts` with `--runInBand`
+- `test/integration/global-setup.ts` runs `prisma migrate deploy` + `prisma db seed` before the suite
 - Test DB is a separate PostgreSQL database, migrated fresh per test suite
 - No mocking of the database in integration tests — use real Prisma + test DB
 - Mocking is allowed for external services (email, S3)

@@ -85,11 +85,16 @@ POST /auth/register
   → hash password with bcryptjs (12 rounds)
   → create unverified user
   → generate random 32-byte hex token; store SHA-256(token) in DB (24h TTL)
-  → send verification email with raw token (fire-and-forget via StubEmailService)
+  → send verification email with raw token (fire-and-forget via ResendEmailService)
 
 GET /auth/verify-email?token=...
   → SHA-256(token) → findUnusedByHash (usedAt IS NULL AND expiresAt > now)
   → mark token used, mark user emailVerified=true
+
+POST /auth/resend-verification
+  → find user by email; no-op for unknown / deleted / already-verified accounts
+  → invalidate outstanding tokens, issue a fresh one, resend email
+  → always returns a generic message (no email enumeration)
 
 POST /auth/login
   → check user exists + is verified

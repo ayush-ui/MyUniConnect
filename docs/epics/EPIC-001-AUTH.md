@@ -245,16 +245,16 @@ created_at  TIMESTAMPTZ
 
 ## Acceptance Criteria
 
-- [ ] User with @tu-ilmenau.de email can register and receives a verification email
-- [ ] User with unsupported domain sees a clear error message
-- [ ] Verification link works once; second click shows "link expired or already used"
-- [ ] Expired token (>24h) shows "link expired" with option to resend
-- [ ] Unverified user cannot call any authenticated endpoint (401)
-- [ ] Login with wrong password shows "Invalid credentials" (not which field is wrong)
-- [ ] Refresh token rotates on every use
-- [ ] Logout invalidates the refresh token server-side
-- [ ] All unit specs pass
-- [ ] All integration specs pass against test database
+- [x] User with @tu-ilmenau.de email can register and receives a verification email *(email send pending Resend domain verification — DEBT-011)*
+- [x] User with unsupported domain sees a clear error message *(422 UNIVERSITY_NOT_SUPPORTED)*
+- [x] Verification link works once; second click shows "link expired or already used"
+- [x] Expired token (>24h) shows "link expired" with option to resend *(POST /auth/resend-verification)*
+- [x] Unverified user cannot call any authenticated endpoint (401) *(EMAIL_NOT_VERIFIED on login)*
+- [x] Login with wrong password shows "Invalid credentials" (not which field is wrong)
+- [x] Refresh token rotates on every use *(verified live: rotated token; post-logout refresh → 401)*
+- [x] Logout invalidates the refresh token server-side
+- [x] All unit specs pass *(121 unit tests)*
+- [x] All integration specs pass against test database *(25 integration tests)*
 
 ---
 

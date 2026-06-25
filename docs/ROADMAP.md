@@ -25,7 +25,7 @@ Goal: Working authentication end-to-end on both API and mobile. A user can regis
 | 1.2 | Database schema — users, universities | `[x]` | Prisma schema created |
 | 1.3 | University domain validation (TU Ilmenau seed) | `[x]` | Seed file created |
 | 1.4 | User registration use case + spec | `[x]` | RegisterUserUseCase + 10 unit tests |
-| 1.5 | Email verification token — send + verify | `[x]` | VerifyEmailUseCase + 7 unit + 4 integration tests; Swagger docs |
+| 1.5 | Email verification token — send + verify + resend | `[x]` | VerifyEmailUseCase + ResendVerificationUseCase (UC-1.3); POST /auth/resend-verification (no email enumeration); 7+8 unit + 4+4 integration tests; Swagger docs |
 | 1.6 | Login use case + JWT issuance | `[x]` | LoginUseCase + ITokenService; 11 unit + 5 integration tests; POST /api/v1/auth/login; httpOnly refresh_token cookie |
 | 1.7 | Refresh token + logout | `[x]` | RefreshAccessTokenUseCase + LogoutUseCase; token rotation; 8 unit + 8 integration tests |
 | 1.8 | Auth guard (NestJS) | `[x]` | JwtAuthGuard + CurrentUser decorator + GET /auth/me; 6 guard unit + 3 use-case unit tests |

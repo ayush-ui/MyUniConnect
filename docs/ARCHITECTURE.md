@@ -149,23 +149,12 @@ Controllers catch `AppError` and map to HTTP responses. Unexpected errors are ca
 
 ---
 
-## Frontend Architecture (Next.js)
+## Frontend Architecture
 
-```
-app/                     # Next.js App Router pages
-components/
-  ui/                    # Primitive components (Button, Input, Card)
-  features/              # Feature-specific composed components
-lib/
-  api/                   # Typed API client (fetch wrappers)
-  auth/                  # Session helpers, guards
-hooks/                   # Custom React hooks
-types/                   # Re-exports from @myuniconnect/shared
-```
-
-- Server Components by default; Client Components only when interactivity needed
-- All API calls go through `lib/api/` — never raw fetch in components
-- Auth state in server session (Next.js cookies), not client-side localStorage
+> **The frontend is the Expo / React Native mobile app (`apps/mobile`).**
+> A Next.js web client was scoped early but never built; `apps/web` has been
+> removed. A web client may return as a later iteration (see ROADMAP). All
+> current frontend work targets mobile — see below.
 
 ---
 

@@ -26,8 +26,7 @@ A university-exclusive platform connecting students through a verified marketpla
 MyUniConnect/
 ├── apps/
 │   ├── api/          # NestJS backend
-│   ├── mobile/       # Expo / React Native app
-│   └── web/          # Next.js frontend (Epic 1 web UI)
+│   └── mobile/       # Expo / React Native app (the frontend)
 ├── packages/
 │   └── shared/       # Shared TypeScript types
 ├── docs/

@@ -20,15 +20,15 @@ _Last verified: 2026-06-25 (live against running API + DB)._
 
 | Epic | Backend | Mobile | Tests |
 |------|---------|--------|-------|
-| **1 — Auth** | ✅ Complete (register, verify, **resend**, login, refresh, logout, me) | ✅ Complete (login, register, check-email, auth gate, session restore) | API 121 unit + 25 integ; mobile 66 |
+| **1 — Auth** | ✅ Complete (register, verify, **resend** + per-email rate limit, login, refresh, logout, me) | ✅ Complete (login, register, check-email, auth gate, session restore) | API 124 unit + 25 integ; mobile 112 |
 | **2 — Marketplace** | ✅ Complete (8 use cases: create/list/get/my/categories/presigned-url/update/status) | ✅ Complete (grid, detail, create) | covered in counts above |
 | **3 — Clubs** | ⬜ Schema only (Prisma models exist) | ⬜ Not started | — |
 | **4 — Housing** | ⬜ Schema only (Prisma models exist) | ⬜ Not started | — |
 
 **Known gaps (tracked below & in the Execution Plan):**
-- Mobile **screen/component tests are missing** — only API layers, `AuthContext`, `useMarketplace`, and storage are tested. `login.tsx`, `register.tsx`, marketplace screens, and `components/ui/*` have no tests.
-- No end-to-end (E2E) test layer (e.g. Detox/Maestro) — flows verified manually only.
-- Email delivery now works via Resend (`mail.unisyncapp.com` verified); rate limiting on resend still pending (DEBT-012).
+- ~~Mobile screen/component tests missing~~ — **done in Phase 0**: `components/ui/*`, auth screens, and marketplace screens now covered (mobile 66 → 112 tests).
+- No end-to-end (E2E) test layer (e.g. Detox/Maestro) — flows verified manually only (Phase 5 / FT.4).
+- Email delivery works via Resend (`mail.unisyncapp.com` verified); resend is now rate-limited 3/hour per email (DEBT-012 resolved).
 
 > **Execution sequence and testing strategy:** see [`docs/EXECUTION_PLAN.md`](EXECUTION_PLAN.md).
 > **Next epic:** Housing (Epic 4) — it mirrors the proven Marketplace pattern — then Clubs (Epic 3).
@@ -132,10 +132,10 @@ Goal: Working authentication end-to-end on both API and mobile. A user can regis
 ### Cross-cutting — Frontend test hardening _(do alongside epics)_
 | # | Story | Status | Notes |
 |---|-------|--------|-------|
-| FT.1 | Tests for `components/ui/*` (Button, FormField, StatusBadge) | `[ ]` | render + prop/interaction |
-| FT.2 | Screen tests for login / register / check-email | `[ ]` | validation, error mapping, navigation |
-| FT.3 | Screen tests for marketplace index / detail / create | `[ ]` | |
-| FT.4 | E2E smoke (Maestro or Detox) for register→login→browse | `[ ]` | evaluate tooling first |
+| FT.1 | Tests for `components/ui/*` (Button, FormField, StatusBadge) | `[x]` | render + prop/interaction (15 tests) |
+| FT.2 | Screen tests for login / register / check-email | `[x]` | validation, error mapping, navigation, resend (17 tests) |
+| FT.3 | Screen tests for marketplace index / detail / create | `[x]` | render, filter, nav, contact-seller, validation (17 tests) |
+| FT.4 | E2E smoke (Maestro or Detox) for register→login→browse | `[ ]` | Phase 5 — evaluate tooling first |
 
 ---
 

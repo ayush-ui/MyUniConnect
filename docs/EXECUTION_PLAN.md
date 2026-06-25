@@ -27,16 +27,16 @@ _Created: 2026-06-25. Companion to [`ROADMAP.md`](ROADMAP.md) (status board) and
 
 ---
 
-## Phase 0 — Stabilize & backfill (1 short pass)
+## Phase 0 — Stabilize & backfill ✅ DONE (2026-06-25)
 
-Close the testing gap on what's *already shipped* before adding new surface area.
+Closed the testing gap on what's *already shipped* before adding new surface area.
 
-- [ ] FT.1 — `components/ui/*` tests (Button, FormField, StatusBadge)
-- [ ] FT.2 — Screen tests: login, register, check-email (validation, server-error mapping, navigation, resend banner)
-- [ ] FT.3 — Screen tests: marketplace index / detail / create
-- [ ] DEBT-012 — Add NestJS throttler to `POST /auth/resend-verification` (max 3/hour per email) + spec
+- [x] FT.1 — `components/ui/*` tests (Button, FormField, StatusBadge) — 15 tests
+- [x] FT.2 — Screen tests: login, register, check-email (validation, server-error mapping, navigation, resend banner) — 17 tests
+- [x] FT.3 — Screen tests: marketplace index / detail / create — 17 tests
+- [x] DEBT-012 — `EmailThrottlerGuard` on `POST /auth/resend-verification` (3/hour per email) + spec; verified live (4th req → 429)
 
-**Done when:** mobile screens have render + interaction coverage; resend is rate-limited with a test.
+**Result:** mobile 66 → **112** tests; API 121 → **124** unit (+25 integration). All green; build clean.
 
 ---
 
@@ -127,7 +127,7 @@ Every spec file this plan introduces. Update the Status column as they land (`[ 
 ### Backend — Auth hardening
 | Spec file | Type | Status |
 |-----------|------|--------|
-| (extend) `apps/api/src/presentation/auth/auth.controller.spec.ts` or throttler guard spec for resend rate limit (DEBT-012) | unit | `[ ]` |
+| `apps/api/src/presentation/auth/guards/email-throttler.guard.spec.ts` (resend rate limit, DEBT-012) | unit | `[x]` |
 
 ### Mobile — new
 | Spec file | Type | Status |
@@ -139,17 +139,17 @@ Every spec file this plan introduces. Update the Status column as they land (`[ 
 | `apps/mobile/app/(tabs)/housing/__tests__/*.spec.tsx` | screen | `[ ]` |
 | `apps/mobile/app/(tabs)/clubs/__tests__/*.spec.tsx` | screen | `[ ]` |
 
-### Mobile — backfill (Phase 0)
+### Mobile — backfill (Phase 0) ✅
 | Spec file | Type | Status |
 |-----------|------|--------|
-| `apps/mobile/components/ui/Button.spec.tsx` | component | `[ ]` |
-| `apps/mobile/components/ui/FormField.spec.tsx` | component | `[ ]` |
-| `apps/mobile/components/ui/StatusBadge.spec.tsx` | component | `[ ]` |
-| `apps/mobile/app/(auth)/login.spec.tsx` | screen | `[ ]` |
-| `apps/mobile/app/(auth)/register.spec.tsx` | screen | `[ ]` |
-| `apps/mobile/app/(auth)/check-email.spec.tsx` | screen | `[ ]` |
-| `apps/mobile/app/(tabs)/marketplace/index.spec.tsx` | screen | `[ ]` |
-| `apps/mobile/app/(tabs)/marketplace/[id].spec.tsx` | screen | `[ ]` |
-| `apps/mobile/app/(tabs)/marketplace/create.spec.tsx` | screen | `[ ]` |
+| `apps/mobile/components/ui/Button.spec.tsx` | component | `[x]` |
+| `apps/mobile/components/ui/FormField.spec.tsx` | component | `[x]` |
+| `apps/mobile/components/ui/StatusBadge.spec.tsx` | component | `[x]` |
+| `apps/mobile/app/(auth)/login.spec.tsx` | screen | `[x]` |
+| `apps/mobile/app/(auth)/register.spec.tsx` | screen | `[x]` |
+| `apps/mobile/app/(auth)/check-email.spec.tsx` | screen | `[x]` |
+| `apps/mobile/app/(tabs)/marketplace/index.spec.tsx` | screen | `[x]` |
+| `apps/mobile/app/(tabs)/marketplace/detail.spec.tsx` _(tests `[id].tsx`)_ | screen | `[x]` |
+| `apps/mobile/app/(tabs)/marketplace/create.spec.tsx` | screen | `[x]` |
 
 > When a spec file here is created, also tick the matching story in `ROADMAP.md`. Any spec file created but left unfilled for >1 phase is a dead-weight orphan — delete it (per the Abandoned Code Policy in ROADMAP).

@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   ApiTags,
   ApiOperation,
@@ -19,6 +20,7 @@ import { LogoutUseCase } from '@application/auth/logout.use-case';
 import { GetMeUseCase } from '@application/auth/get-me.use-case';
 import { ResendVerificationUseCase } from '@application/auth/resend-verification.use-case';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { EmailThrottlerGuard } from './guards/email-throttler.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { TokenPayload } from '@application/auth/token.service.interface';
 import { RegisterDto, RegisterResponseDto } from './dto/register.dto';
@@ -76,8 +78,11 @@ export class AuthController {
 
   @Post('resend-verification')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Resend verification email', description: 'Sends a fresh verification link if the account exists and is not yet verified. Always returns a generic message to avoid email enumeration.' })
+  @UseGuards(EmailThrottlerGuard)
+  @Throttle({ default: { limit: 3, ttl: 60 * 60 * 1000 } })
+  @ApiOperation({ summary: 'Resend verification email', description: 'Sends a fresh verification link if the account exists and is not yet verified. Always returns a generic message to avoid email enumeration. Rate limited to 3 requests/hour per email.' })
   @ApiResponse({ status: 200, description: 'Generic acknowledgement (no account information is leaked).' })
+  @ApiResponse({ status: 429, description: 'Too many resend requests for this email — try again later.' })
   @ApiBadRequestResponse({ description: 'Invalid email format' })
   async resendVerificationHandler(@Body() dto: ResendVerificationDto): Promise<{ message: string }> {
     return this.resendVerification.execute(dto.email);

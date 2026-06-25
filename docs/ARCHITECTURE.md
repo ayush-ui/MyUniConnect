@@ -164,6 +164,38 @@ types/                   # Re-exports from @myuniconnect/shared
 
 ---
 
+## Mobile Architecture (React Native / Expo)
+
+> Full conventions in `docs/mobile/MOBILE_ARCHITECTURE.md`.
+
+```
+app/
+  _layout.tsx            # Root layout — AuthProvider lives here
+  index.tsx              # Auth gate → redirects to (auth) or (tabs)
+  (auth)/                # Unauthenticated route group
+  (tabs)/                # Authenticated route group (guarded in _layout.tsx)
+components/
+  ui/                    # Primitive components only (Button, FormField, …)
+context/
+  AuthContext.tsx        # Single source of truth for auth state
+lib/
+  api/
+    client.ts            # Base fetch wrapper with Bearer + Cookie injection
+    auth.ts              # Typed methods for every auth endpoint
+  auth/
+    storage.ts           # expo-secure-store abstraction
+```
+
+### Key Mobile Decisions
+
+**Cookie workaround:** The API issues refresh tokens as httpOnly cookies (browser-safe). React Native's `fetch` does not manage cookies automatically. Solution: parse `Set-Cookie` response headers after login/refresh, store the raw token in `expo-secure-store`, inject it as a `Cookie:` header on refresh/logout requests.
+
+**Token lifecycle:** Access tokens are stored in `expo-secure-store`. A refresh timer fires 2 minutes before the 15-minute access token expiry, rotating both tokens transparently.
+
+**No external state library:** Auth state lives in a single React Context (`AuthContext`). Feature state lives in local component state or feature-scoped hooks. We do not add Redux, Zustand, or Jotai until a concrete cross-feature state need is proven.
+
+---
+
 ## Scalability Notes
 
 - Stateless API (JWT) — horizontally scalable behind a load balancer

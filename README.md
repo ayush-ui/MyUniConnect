@@ -1,28 +1,24 @@
 # MyUniConnect
 
-A university-exclusive platform connecting students through a verified marketplace, clubs, and housing listings.
+A university-exclusive platform connecting students through a verified marketplace, clubs, and housing listings. Only students with a verified university email can access any feature.
 
-## What It Is
+**Core areas:** Marketplace (buy/sell) · Clubs & Communities · Housing & Sublets
 
-MyUniConnect is accessible only to verified university students. Email verification against known university domains gates all activity — every listing, club post, and housing offer is from a real, verified student.
-
-**Core feature areas:**
-1. **Marketplace** — buy/sell items; student-only or public visibility toggle
-2. **Clubs & Communities** — create and join university clubs, community boards
-3. **Housing & Sublets** — student-posted rental listings, sublets, flatmate searches
+---
 
 ## Tech Stack
 
-| Layer | Technology | Why |
-|-------|-----------|-----|
-| Backend | NestJS (TypeScript) | Modular, testable, DI-first |
-| Frontend | Next.js 14 (App Router, TypeScript) | SSR, SEO, web-first, API-ready for mobile later |
-| Database | PostgreSQL | Relational integrity, scalable |
-| ORM | Prisma | Type-safe queries, migration-first |
-| Auth | JWT + Email Verification | Password auth, university email gate |
-| File Storage | AWS S3 (or compatible) | Product/listing images |
-| Testing | Jest (unit/integration), Playwright (E2E) | TDD from day one |
-| Monorepo | pnpm workspaces | Shared types between FE and BE |
+| Layer | Technology |
+|-------|-----------|
+| API | NestJS (TypeScript), Clean Architecture |
+| Mobile | React Native + Expo (TypeScript), NativeWind |
+| Database | PostgreSQL 15 + Prisma ORM |
+| Auth | JWT (15m access) + opaque refresh tokens (7d, rotated) |
+| File storage | AWS S3 (presigned URLs) |
+| Testing | Jest (unit + integration), Playwright (E2E) |
+| Monorepo | pnpm workspaces |
+
+---
 
 ## Repository Structure
 
@@ -30,17 +26,21 @@ MyUniConnect is accessible only to verified university students. Email verificat
 MyUniConnect/
 ├── apps/
 │   ├── api/          # NestJS backend
-│   └── web/          # Next.js frontend
+│   ├── mobile/       # Expo / React Native app
+│   └── web/          # Next.js frontend (Epic 1 web UI)
 ├── packages/
-│   └── shared/       # Shared TypeScript types and constants
+│   └── shared/       # Shared TypeScript types
 ├── docs/
 │   ├── epics/        # Epic + story definitions
+│   ├── mobile/       # Mobile-specific architecture docs
 │   ├── ARCHITECTURE.md
 │   ├── ROADMAP.md
 │   └── TECHNICAL_DEBT.md
-├── pnpm-workspace.yaml
+├── docker-compose.yml
 └── README.md
 ```
+
+---
 
 ## Supported Universities
 
@@ -48,42 +48,162 @@ MyUniConnect/
 |------------|-------------|--------|
 | TU Ilmenau | @tu-ilmenau.de | Active |
 
-New universities are added via the `universities` seed table — no code change required.
+New universities are added via the `universities` DB table — no code change required.
 
-## Getting Started
+---
+
+## Local Development Setup
 
 ### Prerequisites
-- Node.js >= 20
-- pnpm >= 9
-- PostgreSQL >= 15
-- Docker (optional, for local DB)
 
-### Setup
+| Tool | Version |
+|------|---------|
+| Node.js | >= 20 |
+| pnpm | >= 9 |
+| Docker | Any recent version |
+| Expo Go | Latest (iOS or Android) — for physical device testing |
+
+### 1. Install dependencies
 
 ```bash
 pnpm install
-cp apps/api/.env.example apps/api/.env
-# Fill in DATABASE_URL, JWT_SECRET, SMTP credentials
-
-pnpm --filter api prisma migrate dev
-pnpm --filter api prisma db seed
-
-pnpm dev   # starts both api and web in parallel
 ```
 
-### Running Tests
+### 2. Start the database
 
 ```bash
-pnpm test          # all unit tests
-pnpm test:e2e      # Playwright end-to-end
-pnpm test:watch    # watch mode
+docker compose up -d
 ```
+
+This starts two Postgres containers:
+- `postgres` on port `5432` — development database
+- `postgres_test` on port `5433` — integration test database
+
+### 3. Configure the API
+
+```bash
+cp apps/api/.env.example apps/api/.env
+```
+
+The defaults in `.env.example` work with the Docker setup. You only need to change `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` if you care about token security in local dev.
+
+Key variables:
+
+| Variable | Default | Notes |
+|----------|---------|-------|
+| `DATABASE_URL` | `postgresql://myuniconnect:myuniconnect@localhost:5432/myuniconnect` | Matches Docker Compose |
+| `JWT_ACCESS_SECRET` | `change-me-access-secret` | Change in production |
+| `JWT_REFRESH_SECRET` | `change-me-refresh-secret` | Change in production |
+| `PORT` | `3001` | API listens here |
+| `APP_URL` | `http://localhost:3000` | Used in verification email links |
+
+### 4. Run database migrations and seed
+
+```bash
+pnpm --filter api db:migrate   # runs prisma migrate dev
+pnpm --filter api db:seed      # seeds the universities table
+```
+
+### 5. Start the API
+
+```bash
+pnpm dev        # starts the NestJS API on http://localhost:3001
+```
+
+Swagger UI is available at `http://localhost:3001/docs`.
+
+---
+
+## Running the Mobile App
+
+### 1. Configure the mobile app
+
+```bash
+cp apps/mobile/.env.example apps/mobile/.env.local
+```
+
+Edit `apps/mobile/.env.local`:
+
+```env
+# Use your machine's LAN IP when testing on a physical device or Android emulator.
+# Use http://localhost:3001 for iOS Simulator on the same machine.
+EXPO_PUBLIC_API_URL=http://<your-lan-ip>:3001
+```
+
+To find your LAN IP:
+- macOS: `ipconfig getifaddr en0`
+- Linux: `ip route get 1 | awk '{print $7}'`
+
+### 2. Start the Expo dev server
+
+```bash
+pnpm dev:mobile
+```
+
+Then:
+- **iOS Simulator** — press `i` in the terminal
+- **Android Emulator** — press `a`
+- **Physical device** — scan the QR code with the Expo Go app
+
+> The API must be running (`pnpm dev`) before the mobile app can make requests.
+
+---
+
+## Running Tests
+
+### API unit tests
+
+```bash
+pnpm test
+# or watch mode:
+pnpm --filter api test -- --watch
+```
+
+### API integration tests (requires both Docker DBs running)
+
+```bash
+pnpm --filter api test:integration
+```
+
+Integration tests run against `postgres_test` on port 5433. The global setup runs `prisma migrate deploy` + seed automatically.
+
+### Mobile tests
+
+```bash
+pnpm --filter mobile test
+```
+
+Mobile tests cover pure utilities, hooks, and the AuthContext state machine. They do not test screen rendering.
+
+---
 
 ## Development Workflow
 
-1. Pick a story from the active epic (see `docs/ROADMAP.md`)
-2. Write the spec file first (`*.spec.ts`)
-3. Implement to make tests pass
-4. Open PR, link the story
+1. Pick a story from `docs/ROADMAP.md`
+2. For backend: write the spec file first (`*.spec.ts`) — see `docs/ARCHITECTURE.md`
+3. For mobile: write tests for hooks/utils first — see `docs/mobile/MOBILE_ARCHITECTURE.md`
+4. Implement to make tests pass
+5. Open a PR referencing the story number
 
-See `docs/ARCHITECTURE.md` for clean architecture conventions and layer rules.
+### Email verification in development
+
+The API uses `StubEmailService` in development. Verification tokens are **logged to the API console** — watch the terminal where `pnpm dev` is running:
+
+```
+[STUB] Verification email → student@tu-ilmenau.de
+[STUB] Link: http://localhost:3000/verify-email?token=abc123...
+```
+
+Copy the token from the log and use it manually to verify an account.
+
+---
+
+## Architecture Docs
+
+| Document | What it covers |
+|----------|---------------|
+| `docs/ARCHITECTURE.md` | Layer rules for backend and mobile, auth flow, error conventions |
+| `docs/mobile/MOBILE_ARCHITECTURE.md` | Mobile-specific rules: screens, hooks, API layer, styling, testing |
+| `docs/ROADMAP.md` | Story status, iteration goals, execution order |
+| `docs/TECHNICAL_DEBT.md` | Known shortcuts with revisit conditions |
+| `docs/epics/EPIC-001-AUTH.md` | Auth data model, use case specs, API contract |

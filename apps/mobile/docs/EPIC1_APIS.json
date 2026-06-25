@@ -1,0 +1,349 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1/auth/register": {
+      "post": {
+        "operationId": "AuthController_register",
+        "summary": "Register a new student account",
+        "description": "Accepts a university email address. A verification email is sent upon success.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Account created; verification email sent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error or unsupported university domain"
+          },
+          "409": {
+            "description": "Email already registered"
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/api/v1/auth/verify-email": {
+      "get": {
+        "operationId": "AuthController_verifyEmailHandler",
+        "summary": "Verify email address",
+        "description": "Token is extracted from the verification link sent by email.",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "query",
+            "description": "The one-time verification token from the email link",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Email verified successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyEmailResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Token is invalid or has already been used / expired"
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "AuthController_loginUser",
+        "summary": "Login",
+        "description": "Authenticates a verified student. Returns a JWT access token in the body and sets an httpOnly refresh_token cookie.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful. Access token in body; refresh token in httpOnly cookie.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "401": {
+            "description": "Invalid credentials or email not verified"
+          }
+        },
+        "tags": ["Auth"],
+        "security": [
+          {
+            "refresh_token": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "operationId": "AuthController_refresh",
+        "summary": "Refresh access token",
+        "description": "Rotates the refresh token and issues a new access token. Requires a valid refresh_token cookie.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "New access token issued; refresh token rotated in cookie.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Refresh token is missing, invalid, or expired"
+          }
+        },
+        "tags": ["Auth"],
+        "security": [
+          {
+            "refresh_token": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logoutUser",
+        "summary": "Logout",
+        "description": "Revokes the refresh token and clears the cookie.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Logged out successfully."
+          }
+        },
+        "tags": ["Auth"],
+        "security": [
+          {
+            "refresh_token": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "operationId": "AuthController_me",
+        "summary": "Get current user",
+        "description": "Returns the authenticated user profile. Requires a valid access token.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current user profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token"
+          }
+        },
+        "tags": ["Auth"],
+        "security": [
+          {
+            "access-token": []
+          }
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "MyUniConnect API",
+    "description": "University-exclusive student platform. All endpoints (except auth) require a verified student account.",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [
+    {
+      "name": "Auth",
+      "description": "Registration, email verification, login, token refresh"
+    },
+    {
+      "name": "Marketplace",
+      "description": "Buy and sell listings"
+    },
+    {
+      "name": "Clubs",
+      "description": "University clubs and communities"
+    },
+    {
+      "name": "Housing",
+      "description": "Rental and sublet listings"
+    }
+  ],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "access-token": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http",
+        "description": "Access token (15m TTL)"
+      },
+      "cookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "refresh_token"
+      }
+    },
+    "schemas": {
+      "RegisterDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "student@tu-ilmenau.de",
+            "description": "Must be a verified university email address"
+          },
+          "password": {
+            "type": "string",
+            "example": "Secure!123",
+            "description": "Min 8 chars, must contain uppercase, number, and special character"
+          },
+          "firstName": {
+            "type": "string",
+            "example": "Max"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Muster"
+          }
+        },
+        "required": ["email", "password", "firstName", "lastName"]
+      },
+      "RegisterResponseDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+          },
+          "message": {
+            "type": "string",
+            "example": "Check your email to verify your account."
+          }
+        },
+        "required": ["userId", "message"]
+      },
+      "VerifyEmailResponseDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Email verified successfully."
+          }
+        },
+        "required": ["message"]
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "student@tu-ilmenau.de"
+          },
+          "password": {
+            "type": "string",
+            "example": "Secure!123"
+          }
+        },
+        "required": ["email", "password"]
+      },
+      "LoginResponseDto": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "Short-lived JWT access token (15 min)"
+          }
+        },
+        "required": ["accessToken"]
+      },
+      "MeResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "universityId": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "firstName",
+          "lastName",
+          "universityId",
+          "role",
+          "emailVerified",
+          "createdAt"
+        ]
+      }
+    }
+  }
+}

@@ -43,8 +43,12 @@ Items here are known shortcuts or deferred improvements. Each entry has a label:
 | DEBT-003 | Search | Listing search is simple ILIKE — no ranking | INFRA-004 |
 | DEBT-004 | Messaging | "Contact seller" is a stub (mailto link) | Iteration 2 full messaging epic |
 | DEBT-005 | Notifications | No real-time — polling only on initial build | Iteration 2 notification epic |
-| DEBT-006 | Email | StubEmailService logs to console; no real SMTP | Before any production deployment |
+| ~~DEBT-006~~ | ~~Email~~ | ~~StubEmailService logs to console; no real SMTP~~ | **Resolved** — `ResendEmailService` sends verification emails via Resend (HTML + text); stub deleted |
 | DEBT-007 | Auth | `ITokenService.signRefreshToken` accepts a `TokenPayload` param that is currently unused (tokens are opaque random bytes) | Clean up interface in Iteration 2 — remove param or replace with a dedicated `generateRefreshToken(): string` method |
+| DEBT-011 | Email | Resend account is in test mode with no verified domain, so `EMAIL_FROM` is `onboarding@resend.dev` and sends only succeed to the account owner's address. Registration emails to real `*.tu-ilmenau.de` recipients are rejected (403) until a domain is verified. | Verify a sending domain at resend.com/domains and set `EMAIL_FROM` to an address on it — before any real-user testing |
+| DEBT-010 | Mobile / Testing | `msw` v2+ is ESM-only; its transitive deps (`rettime`, `@open-draft/deferred-promise`) cannot be loaded in Jest's CJS mode. API layer tests use `jest.mock('./client')` instead of a real HTTP mock server. | Upgrade to `jest-expo` with experimental ESM mode, or replace with Vitest + native ESM when RN ecosystem fully supports it |
+| ~~DEBT-008~~ | ~~Marketplace~~ | ~~`StubStorageService` generates fake presigned URLs; no real S3 calls~~ | **Resolved** — `S3StorageService` wired with Hetzner Object Storage |
+| ~~DEBT-009~~ | ~~Marketplace~~ | ~~`GET /marketplace/listings` controller reads `req.user` directly (no guard)~~ | **Resolved** — `OptionalJwtAuthGuard` applied to `GET /listings` and `GET /listings/:id` |
 
 ---
 

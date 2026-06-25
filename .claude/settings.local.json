@@ -18,7 +18,16 @@
       "Bash(pnpm --filter api test:integration)",
       "Bash(DATABASE_URL=\"postgresql://myuniconnect:myuniconnect@localhost:5433/myuniconnect_test\" npx prisma migrate dev --name init --schema=prisma/schema.prisma)",
       "Bash(git add *)",
-      "Bash(netstat -tlnp)"
+      "Bash(netstat -tlnp)",
+      "Bash(npx tsc *)",
+      "Bash(npx expo *)",
+      "Bash(pnpm test *)",
+      "Bash(npx jest *)",
+      "Bash(pnpm test:integration)",
+      "mcp__claude_ai_Figma__get_metadata",
+      "mcp__claude_ai_Figma__get_design_context",
+      "mcp__claude_ai_Figma__get_screenshot",
+      "Bash(curl *)"
     ]
   }
 }

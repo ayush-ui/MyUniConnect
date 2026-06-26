@@ -16,6 +16,7 @@ export interface MeOutput {
   studentStatus: StudentStatus;
   isVerifiedStudent: boolean;
   university: { id: string; name: string } | null;
+  claimedUniversityName: string | null;
   createdAt: Date;
 }
 
@@ -50,6 +51,7 @@ export class GetMeUseCase {
       studentStatus: user.studentStatus,
       isVerifiedStudent: user.isVerifiedStudent,
       university,
+      claimedUniversityName: user.claimedUniversityName,
       createdAt: user.createdAt,
     };
   }

@@ -3,16 +3,31 @@ import { parseRefreshTokenFromCookie } from '../auth/storage';
 
 const AUTH = '/api/v1/auth';
 
+export type AccountType = 'student' | 'non_student';
+export type StudentStatus = 'none' | 'pending' | 'verified' | 'rejected';
+
 export interface RegisterPayload {
   email: string;
   password: string;
   firstName: string;
   lastName: string;
+  accountType: AccountType;
+  /** Set when a student picks a partner university from the list. */
+  universityId?: string;
+  /** Free text when a student picks "Other (Not listed)". */
+  claimedUniversityName?: string;
 }
 
 export interface RegisterResult {
   userId: string;
+  accountType: AccountType;
+  studentStatus: StudentStatus;
   message: string;
+}
+
+export interface University {
+  id: string;
+  name: string;
 }
 
 export interface LoginPayload {
@@ -31,9 +46,16 @@ export interface MeResult {
   email: string;
   firstName: string;
   lastName: string;
-  universityId: string;
+  universityId: string | null;
   role: string;
   emailVerified: boolean;
+  accountType: AccountType;
+  studentStatus: StudentStatus;
+  /** Derived gate for posting: student & verified & email-verified. */
+  isVerifiedStudent: boolean;
+  university: University | null;
+  /** Free-text university from the "Other" path (pending students). */
+  claimedUniversityName: string | null;
   createdAt: string;
 }
 
@@ -75,6 +97,11 @@ export const authApi = {
 
   async me(accessToken: string): Promise<MeResult> {
     return apiFetch(`${AUTH}/me`, { accessToken });
+  },
+
+  /** Active partner universities for the signup picker (public endpoint). */
+  async universities(): Promise<University[]> {
+    return apiFetch(`${AUTH}/universities`);
   },
 
   async resendVerification(email: string): Promise<{ message: string }> {

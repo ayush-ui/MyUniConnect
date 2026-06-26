@@ -4,8 +4,10 @@ import RegisterScreen from './register';
 import { ApiError } from '../../lib/api/client';
 
 const mockReplace = jest.fn();
+let mockParams: Record<string, string> = { accountType: 'student', universityId: 'uni-1' };
 jest.mock('expo-router', () => ({
   useRouter: () => ({ replace: mockReplace, push: jest.fn() }),
+  useLocalSearchParams: () => mockParams,
   Link: ({ children }: { children: React.ReactNode }) => children,
 }));
 
@@ -20,16 +22,17 @@ function submit() {
   fireEvent.press(matches[matches.length - 1]);
 }
 
-function fillValidForm() {
+function fillValidForm(emailPlaceholder = 'student@tu-ilmenau.de') {
   fireEvent.changeText(screen.getByPlaceholderText('Max'), 'Max');
   fireEvent.changeText(screen.getByPlaceholderText('Muster'), 'Muster');
-  fireEvent.changeText(screen.getByPlaceholderText('student@tu-ilmenau.de'), 'student@tu-ilmenau.de');
+  fireEvent.changeText(screen.getByPlaceholderText(emailPlaceholder), 'student@tu-ilmenau.de');
   fireEvent.changeText(screen.getByPlaceholderText('Min 8 chars, uppercase, number, symbol'), 'Secret123!');
   fireEvent.changeText(screen.getByPlaceholderText('Repeat your password'), 'Secret123!');
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockParams = { accountType: 'student', universityId: 'uni-1' };
 });
 
 describe('RegisterScreen', () => {
@@ -64,8 +67,8 @@ describe('RegisterScreen', () => {
     expect(mockRegister).not.toHaveBeenCalled();
   });
 
-  it('registers and routes to check-email with the normalized email', async () => {
-    mockRegister.mockResolvedValue({ userId: 'u1', message: 'ok' });
+  it('registers a partner student and routes to check-email with the "posting" variant', async () => {
+    mockRegister.mockResolvedValue({ userId: 'u1', accountType: 'student', studentStatus: 'pending', message: 'ok' });
     render(<RegisterScreen />);
     fillValidForm();
     submit();
@@ -76,10 +79,43 @@ describe('RegisterScreen', () => {
         password: 'Secret123!',
         firstName: 'Max',
         lastName: 'Muster',
+        accountType: 'student',
+        universityId: 'uni-1',
+        claimedUniversityName: undefined,
       });
       expect(mockReplace).toHaveBeenCalledWith({
         pathname: '/(auth)/check-email',
-        params: { email: 'student@tu-ilmenau.de' },
+        params: { email: 'student@tu-ilmenau.de', variant: 'posting' },
+      });
+    });
+  });
+
+  it('routes an "Other" student to the "review" variant', async () => {
+    mockParams = { accountType: 'student', claimedUniversityName: 'Uni Stuttgart' };
+    mockRegister.mockResolvedValue({ userId: 'u1', accountType: 'student', studentStatus: 'pending', message: 'ok' });
+    render(<RegisterScreen />);
+    fillValidForm();
+    submit();
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith({
+        pathname: '/(auth)/check-email',
+        params: { email: 'student@tu-ilmenau.de', variant: 'review' },
+      });
+    });
+  });
+
+  it('routes a non-student to the "browsing" variant', async () => {
+    mockParams = { accountType: 'non_student' };
+    mockRegister.mockResolvedValue({ userId: 'u1', accountType: 'non_student', studentStatus: 'none', message: 'ok' });
+    render(<RegisterScreen />);
+    fillValidForm('your@email.com');
+    submit();
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith({
+        pathname: '/(auth)/check-email',
+        params: { email: 'student@tu-ilmenau.de', variant: 'browsing' },
       });
     });
   });
@@ -94,16 +130,5 @@ describe('RegisterScreen', () => {
       expect(screen.getByText('This email is already registered')).toBeTruthy();
     });
     expect(mockReplace).not.toHaveBeenCalled();
-  });
-
-  it('maps UNIVERSITY_NOT_SUPPORTED to an inline email error', async () => {
-    mockRegister.mockRejectedValue(new ApiError('UNIVERSITY_NOT_SUPPORTED', 'nope', 422));
-    render(<RegisterScreen />);
-    fillValidForm();
-    submit();
-
-    await waitFor(() => {
-      expect(screen.getByText('This university domain is not supported yet')).toBeTruthy();
-    });
   });
 });

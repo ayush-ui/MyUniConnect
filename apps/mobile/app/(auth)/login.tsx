@@ -31,7 +31,7 @@ function validateForm(values: FormValues): FormErrors {
   if (!values.email.trim()) {
     errors.email = 'Email is required';
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) {
-    errors.email = 'Enter a valid university email';
+    errors.email = 'Enter a valid email';
   }
 
   if (!values.password) {
@@ -123,7 +123,7 @@ export default function LoginScreen() {
                 Welcome back
               </Text>
               <Text className="text-sm font-jakarta text-neutral-600">
-                Log in with your university email to continue.
+                Log in to continue.
               </Text>
             </View>
 
@@ -152,8 +152,8 @@ export default function LoginScreen() {
 
             <View className="gap-4">
               <FormField
-                label="University email"
-                placeholder="student@tu-ilmenau.de"
+                label="Email"
+                placeholder="you@example.com"
                 value={values.email}
                 onChangeText={setField('email')}
                 keyboardType="email-address"
@@ -201,7 +201,7 @@ export default function LoginScreen() {
               <Text className="text-[13px] font-jakarta text-neutral-600">
                 Don't have an account?
               </Text>
-              <Link href="/(auth)/register" asChild>
+              <Link href="/(auth)/signup-account-type" asChild>
                 <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   <Text className="text-[13px] font-jakarta-medium text-primary-400">Sign up</Text>
                 </TouchableOpacity>

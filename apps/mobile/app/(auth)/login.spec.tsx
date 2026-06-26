@@ -20,7 +20,7 @@ jest.mock('../../lib/api/auth', () => ({
 }));
 
 function fillCredentials() {
-  fireEvent.changeText(screen.getByPlaceholderText('student@tu-ilmenau.de'), 'student@tu-ilmenau.de');
+  fireEvent.changeText(screen.getByPlaceholderText('you@example.com'), 'student@tu-ilmenau.de');
   fireEvent.changeText(screen.getByPlaceholderText('Enter your password'), 'Secret123!');
 }
 
@@ -39,10 +39,10 @@ describe('LoginScreen', () => {
 
   it('rejects an invalid email format', () => {
     render(<LoginScreen />);
-    fireEvent.changeText(screen.getByPlaceholderText('student@tu-ilmenau.de'), 'not-an-email');
+    fireEvent.changeText(screen.getByPlaceholderText('you@example.com'), 'not-an-email');
     fireEvent.changeText(screen.getByPlaceholderText('Enter your password'), 'Secret123!');
     fireEvent.press(screen.getByText('Log in'));
-    expect(screen.getByText('Enter a valid university email')).toBeTruthy();
+    expect(screen.getByText('Enter a valid email')).toBeTruthy();
     expect(mockLogin).not.toHaveBeenCalled();
   });
 

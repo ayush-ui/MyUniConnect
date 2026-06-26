@@ -13,6 +13,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { marketplaceApi, storageUrl, Listing, CONDITION_LABELS } from '../../../lib/api/marketplace';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { Button } from '../../../components/ui/Button';
+import { VerifiedStudentBadge } from '../../../components/ui/VerifiedStudentBadge';
 import { useAuth } from '../../../context/AuthContext';
 
 function formatPrice(priceCents: number): string {
@@ -135,12 +136,17 @@ export default function ListingDetailScreen() {
               {listing.description}
             </Text>
 
-            {/* Seller */}
+            {/* Seller — every seller is a verified student (the posting moat),
+                so the trust badge always applies. University name awaits a
+                backend seller field on the listing payload. */}
             <View className="flex-row items-center gap-2.5">
               <View className="w-9 h-9 rounded-full bg-neutral-200" />
-              <Text className="text-[13px] font-jakarta-medium text-neutral-800">
-                Listed by a verified student
-              </Text>
+              <View className="gap-1">
+                <Text className="text-[13px] font-jakarta-medium text-neutral-800">
+                  Listed by a verified student
+                </Text>
+                <VerifiedStudentBadge variant="verified" size="sm" />
+              </View>
             </View>
           </View>
         </ScrollView>

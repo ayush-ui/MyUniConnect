@@ -1,6 +1,8 @@
-# MyUniConnect
+# UniSync
 
-A university-exclusive platform connecting students through a verified marketplace, clubs, and housing listings. Only students with a verified university email can access any feature.
+> Product name: **UniSync**. The repository directory and some internal identifiers still read "MyUniConnect" (legacy) — tracked as DEBT-021. Brand kit: `apps/mobile/assets/brand/`.
+
+A university platform connecting students through a verified marketplace, clubs, and housing listings. **Verified students** can post; **non-students** can hold browse-only accounts. The trust moat is "who can post," not "who can hold an account" (see `docs/BUSINESS_MODEL.md`).
 
 **Core areas:** Marketplace (buy/sell) · Clubs & Communities · Housing & Sublets
 

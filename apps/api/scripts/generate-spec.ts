@@ -9,7 +9,7 @@ async function generate() {
   app.setGlobalPrefix('api/v1');
 
   const config = new DocumentBuilder()
-    .setTitle('MyUniConnect API')
+    .setTitle('UniSync API')
     .setDescription('University-exclusive student platform.')
     .setVersion('1.0')
     .addBearerAuth(

@@ -14,25 +14,28 @@
 
 ## Status at a Glance
 
-_Last verified: 2026-06-25 (live against running API + DB)._
+_Last verified: 2026-06-26 (live against running API + DB)._
+
+**Product name: UniSync.** App-facing branding (Expo app name/icon/splash, verification email, Swagger title) is now UniSync; the brand kit lives in `apps/mobile/assets/brand/`. The repo directory and some internal identifiers still read "MyUniConnect" (legacy) — see DEBT-021.
 
 **Stack:** NestJS API (`apps/api`) + Expo/React Native mobile (`apps/mobile`). **Frontend is mobile-only** — the Next.js web app was dropped and `apps/web` removed.
 
 | Epic | Backend | Mobile | Tests |
 |------|---------|--------|-------|
-| **1 — Auth** | ✅ Complete (register, verify, **resend** + per-email rate limit, login, refresh, logout, me) | ✅ Complete (login, register, check-email, auth gate, session restore) | API 124 unit + 25 integ; mobile 112 |
+| **1 — Auth** | ✅ Complete (register, verify, **resend** + per-email rate limit, login, refresh, logout, me) | ✅ Complete (login, register, check-email, auth gate, session restore) | API 140 unit + 29 integ; mobile 133 |
 | **2 — Marketplace** | ✅ Complete (8 use cases: create/list/get/my/categories/presigned-url/update/status) | ✅ Complete (grid, detail, create) | covered in counts above |
 | **3 — Clubs** | ⬜ Schema only (Prisma models exist) | ⬜ Not started | — |
 | **4 — Housing** | ⬜ Schema only (Prisma models exist) | ⬜ Not started | — |
-| **5 — Identity v2** (account types, verified-student gating) | ⬜ Planned (design done) | ⬜ Planned | — |
+| **5 — Identity v2** (account types, verified-student gating) | ✅ Complete (migration + backfill, account-type register, verify-email promotion, `VerifiedStudentGuard`, `GET /auth/universities`, `/auth/me` fields) | ✅ Complete (signup chooser→picker→fields, 3 check-email variants, `VerifiedStudentBadge`, Profile + status panel, posting gates) | covered in counts above |
 
 **Known gaps (tracked below & in the Execution Plan):**
-- ~~Mobile screen/component tests missing~~ — **done in Phase 0**: `components/ui/*`, auth screens, and marketplace screens now covered (mobile 66 → 112 tests).
+- ~~Mobile screen/component tests missing~~ — **done in Phase 0**: `components/ui/*`, auth screens, and marketplace screens now covered (mobile 66 → 112 → 133 tests).
 - No end-to-end (E2E) test layer (e.g. Detox/Maestro) — flows verified manually only (Phase 5 / FT.4).
 - Email delivery works via Resend (`mail.unisyncapp.com` verified); resend is now rate-limited 3/hour per email (DEBT-012 resolved).
+- Brand polish open: animated splash/loader not yet native (DEBT-019); Android adaptive-icon safe zone (DEBT-018); listing seller verified-badge needs a backend seller field (DEBT-020).
 
 > **Execution sequence and testing strategy:** see [`docs/EXECUTION_PLAN.md`](EXECUTION_PLAN.md).
-> **Next:** **Epic 5 — Identity v2** (account types + verified-student posting gate) lands *before* Housing, because Housing inherits the "students post, others browse" rule. Then Housing (Epic 4), then Clubs (Epic 3).
+> **Next:** **Epic 4 — Housing** (mirrors Marketplace; inherits the verified-student posting gate from Identity v2), then **Epic 3 — Clubs**. Identity v2 (Epic 5) is now complete on both backend and mobile.
 > Product/UX context for Identity v2: `BUSINESS_MODEL.md` §2 and `docs/mobile/UI_BRIEF-account-types-and-signup.md`.
 
 ---
@@ -93,23 +96,25 @@ Goal: Working authentication end-to-end on both API and mobile. A user can regis
 | 2.11 | Create listing UI | `[x]` | Photo picker (expo-image-picker), category/condition pickers, students-only toggle |
 | 2.12 | Marketplace API layer | `[x]` | `lib/api/marketplace.ts` — /api/v1 prefix fixed; 7 missing methods added; 21 unit tests |
 
-### Epic 5 — Identity v2: Account Types & Student Verification  _(PLANNED — do before/with Housing)_
+### Epic 5 — Identity v2: Account Types & Student Verification  _(✅ COMPLETE — 2026-06-26; backend + mobile)_
 > Files: `docs/epics/EPIC-001-AUTH.md` (revised UC-1.1, new UC-1.7/1.8), `docs/ARCHITECTURE.md` (Identity model), `docs/mobile/UI_BRIEF-account-types-and-signup.md`.
-> **Why now:** posting must be gated to verified students *before* Housing ships (housing inherits the same "students post, others browse" rule). Reasoning in `BUSINESS_MODEL.md` §2.
+> **Why first:** posting must be gated to verified students *before* Housing ships (housing inherits the same "students post, others browse" rule). Reasoning in `BUSINESS_MODEL.md` §2.
+> Shipped on branch `feat/identity-v2-account-types` (backend `999a212`, mobile `8db7bc2`). Mobile built against the captured Figma frames (nodes `81:2`–`99:93`).
 
 | # | Story | Status | Notes |
 |---|-------|--------|-------|
-| 5.1 | Schema migration: `account_type`, `student_status`, `is_verified_student`, nullable `university_id`, `claimed_university_name`; `StudentVerificationRequest` table | `[ ]` | additive; backfill existing users as verified students |
-| 5.2 | Revise `RegisterUser` (UC-1.1): account types, partner vs "Other", no domain rejection | `[ ]` | + revised/expanded specs |
-| 5.3 | Email-domain → partner detection; promote to `verified` on email verification (UC-1.2) | `[ ]` | the "sort student/non-student emails" task |
-| 5.4 | `VerifiedStudentGuard` + `403 STUDENT_VERIFICATION_REQUIRED` on create endpoints (mktplace + housing) | `[ ]` | UC-1.8; add `isVerifiedStudent` to JWT + `/auth/me` |
-| 5.5 | `GET /auth/universities` (UC-1.7) for the dropdown | `[ ]` | |
-| 5.6 | Fix `isVerifiedStudent: !!user` in marketplace controller → real flag | `[ ]` | resolves the v1 shortcut (see TECHNICAL_DEBT) |
-| M5.1 | Signup redesign: student chooser → searchable university picker → "Other" free-text → check-email variants | `[ ]` | per UI brief; needs design first |
-| M5.2 | `VerifiedStudentBadge` component (verified / pending / none) | `[ ]` | per UI brief |
-| M5.3 | Gate post entry points + explanatory sheets (pending / non-student) | `[ ]` | |
-| M5.4 | Account/profile status panel (incl. pending "under review") | `[ ]` | |
-| M5.5 | Tests: signup branches, badge states, gating | `[ ]` | |
+| 5.1 | Schema migration: `account_type`, `student_status`, `is_verified_student`, nullable `university_id`, `claimed_university_name`; `StudentVerificationRequest` table | `[x]` | additive; existing users backfilled as verified students |
+| 5.2 | Revise `RegisterUser` (UC-1.1): account types, partner vs "Other", no domain rejection | `[x]` | revised + expanded unit/integration specs |
+| 5.3 | Email-domain → partner detection; promote to `verified` on email verification (UC-1.2) | `[x]` | promotes pending→verified on domain match |
+| 5.4 | `VerifiedStudentGuard` + `403 STUDENT_VERIFICATION_REQUIRED` on create endpoints (mktplace + housing) | `[x]` | UC-1.8; `isVerifiedStudent`/`accountType`/`studentStatus` in JWT + `/auth/me` (also `university`, `claimedUniversityName`). Housing guard wires in when Housing ships. |
+| 5.5 | `GET /auth/universities` (UC-1.7) for the dropdown | `[x]` | |
+| 5.6 | Fix `isVerifiedStudent: !!user` in marketplace controller → real flag | `[x]` | resolves DEBT-014 |
+| M5.1 | Signup redesign: student chooser → searchable university picker → "Other" free-text → check-email variants | `[x]` | `signup-account-type` → `signup-university` → `register` → 3 `check-email` variants |
+| M5.2 | `VerifiedStudentBadge` component (verified / pending / visitor) | `[x]` | + `SearchablePicker`, `LockedSheet`, Button `secondary` |
+| M5.3 | Gate post entry points + explanatory sheets (pending / non-student) | `[x]` | marketplace "+" → `LockedSheet`; create screen handles 403 defensively |
+| M5.4 | Account/profile status panel (incl. pending "under review") | `[x]` | new Profile tab; 3 states |
+| M5.5 | Tests: signup branches, badge states, gating | `[x]` | mobile 112 → 133 (chooser, university picker, register variants, badge, profile states, marketplace gating) |
+| M5.6 | Branding: UniSync app name, icon, splash, brand kit (`assets/brand/`); email + Swagger copy | `[x]` | 2026-06-26; legacy internal names deferred (DEBT-021) |
 
 ### Epic 4 — Housing & Sublets  _(after Identity v2 — mirrors Marketplace)_
 > File: `docs/epics/EPIC-004-HOUSING.md` · Build order: **before Clubs**.

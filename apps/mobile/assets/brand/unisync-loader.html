@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UniSync — Loader</title>
+<style>
+  html,body{margin:0;height:100%;background:#2E5559;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;}
+  .wrap{display:flex;flex-direction:column;align-items:center;gap:26px;}
+  .cap{color:#BFD0D0;font-size:14px;font-weight:500;letter-spacing:.02em;}
+  svg{width:160px;height:160px;overflow:visible;}
+  @keyframes uGround { 0%{opacity:0;} 8%,86%{opacity:1;} 100%{opacity:0;} }
+  @keyframes uStepB  { 0%{opacity:0;transform:translateY(11px);} 9%,86%{opacity:1;transform:translateY(0);} 100%{opacity:0;} }
+  @keyframes uStepT  { 0%{opacity:0;transform:translateY(8px);} 15%,86%{opacity:1;transform:translateY(0);} 100%{opacity:0;} }
+  @keyframes uColA   { 0%{opacity:0;transform:scaleY(0);} 21%,86%{opacity:1;transform:scaleY(1);} 100%{opacity:0;transform:scaleY(1);} }
+  @keyframes uColB   { 0%{opacity:0;transform:scaleY(0);} 27%,86%{opacity:1;transform:scaleY(1);} 100%{opacity:0;transform:scaleY(1);} }
+  @keyframes uColC   { 0%{opacity:0;transform:scaleY(0);} 33%,86%{opacity:1;transform:scaleY(1);} 100%{opacity:0;transform:scaleY(1);} }
+  @keyframes uColD   { 0%{opacity:0;transform:scaleY(0);} 39%,86%{opacity:1;transform:scaleY(1);} 100%{opacity:0;transform:scaleY(1);} }
+  @keyframes uBeamSh { 0%{opacity:0;transform:translateY(-6px);} 46%,86%{opacity:1;transform:translateY(0);} 100%{opacity:0;} }
+  @keyframes uBeam   { 0%{opacity:0;transform:translateY(-8px);} 49%,86%{opacity:1;transform:translateY(0);} 100%{opacity:0;} }
+  @keyframes uRoof   { 0%{opacity:0;transform:translateY(-16px);} 58%,86%{opacity:1;transform:translateY(0);} 100%{opacity:0;transform:translateY(0);} }
+  @keyframes uEmblem { 0%{opacity:0;transform:scale(0);} 66%{transform:scale(1.25);} 72%,86%{opacity:1;transform:scale(1);} 100%{opacity:0;transform:scale(1);} }
+  [class^=p]{transform-box:fill-box;}
+  .pGround{transform-origin:center;animation:uGround 3.6s ease-out infinite;}
+  .pStepB{transform-origin:center;animation:uStepB 3.6s ease-out infinite;}
+  .pStepT{transform-origin:center;animation:uStepT 3.6s ease-out infinite;}
+  .pColA{transform-origin:center bottom;animation:uColA 3.6s ease-out infinite;}
+  .pColB{transform-origin:center bottom;animation:uColB 3.6s ease-out infinite;}
+  .pColC{transform-origin:center bottom;animation:uColC 3.6s ease-out infinite;}
+  .pColD{transform-origin:center bottom;animation:uColD 3.6s ease-out infinite;}
+  .pBeamSh{transform-origin:center;animation:uBeamSh 3.6s ease-out infinite;}
+  .pBeam{transform-origin:center;animation:uBeam 3.6s ease-out infinite;}
+  .pRoof{transform-origin:center;animation:uRoof 3.6s ease-out infinite;}
+  .pEmblem{transform-origin:center;animation:uEmblem 3.6s ease-out infinite;}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <svg viewBox="0 0 100 100" fill="none">
+      <ellipse class="pGround" cx="50" cy="86" rx="42" ry="6" fill="#3A6266"/>
+      <rect class="pStepB" x="14" y="78" width="72" height="7" rx="3.5" fill="#C3D2D2"/>
+      <rect class="pStepT" x="18" y="72" width="64" height="6" rx="3" fill="#FAF8F5"/>
+      <rect class="pColA" x="24" y="54" width="8" height="18" rx="4" fill="#FAF8F5"/>
+      <rect class="pColB" x="38.7" y="54" width="8" height="18" rx="4" fill="#FAF8F5"/>
+      <rect class="pColC" x="53.3" y="54" width="8" height="18" rx="4" fill="#E7B85C"/>
+      <rect class="pColD" x="68" y="54" width="8" height="18" rx="4" fill="#FAF8F5"/>
+      <rect class="pBeamSh" x="21" y="50.5" width="58" height="3" rx="1.5" fill="#C3D2D2"/>
+      <rect class="pBeam" x="19" y="45" width="62" height="6" rx="3" fill="#FAF8F5"/>
+      <path class="pRoof" d="M50,22 L79,45 L21,45 Z" fill="#FAF8F5"/>
+      <g class="pEmblem">
+        <circle cx="50" cy="36" r="5" fill="#E7B85C"/>
+        <circle cx="50" cy="36" r="2.1" fill="#FBF1DC"/>
+      </g>
+    </svg>
+    <div class="cap">Your campus, in sync.</div>
+  </div>
+</body>
+</html>

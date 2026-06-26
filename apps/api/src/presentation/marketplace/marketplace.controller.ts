@@ -10,6 +10,7 @@ import {
 import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
+import { VerifiedStudentGuard } from '../auth/guards/verified-student.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { TokenPayload } from '../../application/auth/token.service.interface';
 import { CreateListingUseCase } from '../../application/marketplace/create-listing.use-case';
@@ -65,12 +66,13 @@ export class MarketplaceController {
 
   @Post('listings')
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, VerifiedStudentGuard)
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Create a marketplace listing' })
+  @ApiOperation({ summary: 'Create a marketplace listing (verified students only)' })
   @ApiResponse({ status: 201, type: ListingResponseDto })
   @ApiBadRequestResponse()
   @ApiUnauthorizedResponse()
+  @ApiForbiddenResponse({ description: 'STUDENT_VERIFICATION_REQUIRED — caller is not a verified student' })
   async create(@CurrentUser() user: TokenPayload, @Body() dto: CreateListingDto): Promise<ListingResponseDto> {
     const listing = await this.createListing.execute({
       callerId: user.sub,
@@ -95,7 +97,7 @@ export class MarketplaceController {
   async list(@Req() req: Request, @Query() query: ListListingsQueryDto): Promise<ListingsPageResponseDto> {
     const user = (req as any).user as TokenPayload | undefined;
     const result = await this.listListings.execute({
-      isVerifiedStudent: !!user,
+      isVerifiedStudent: user?.isVerifiedStudent ?? false,
       categoryId: query.categoryId,
       condition: query.condition,
       minPriceCents: query.minPriceCents,
@@ -129,7 +131,7 @@ export class MarketplaceController {
   @ApiForbiddenResponse()
   async getOne(@Req() req: Request, @Param('id', ParseUUIDPipe) id: string): Promise<ListingResponseDto> {
     const user = (req as any).user as TokenPayload | undefined;
-    const listing = await this.getListing.execute({ listingId: id, isVerifiedStudent: !!user });
+    const listing = await this.getListing.execute({ listingId: id, isVerifiedStudent: user?.isVerifiedStudent ?? false });
     return toListingDto(listing);
   }
 

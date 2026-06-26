@@ -26,7 +26,7 @@ describe('OptionalJwtAuthGuard', () => {
   });
 
   it('returns true and populates req.user when token is valid', () => {
-    const payload: TokenPayload = { sub: 'user-1', role: 'student' };
+    const payload: TokenPayload = { sub: 'user-1', role: 'student', accountType: 'student', studentStatus: 'verified', isVerifiedStudent: true };
     mockTokenService.verifyAccessToken.mockReturnValue(payload);
 
     const ctx = makeContext('Bearer valid-token');

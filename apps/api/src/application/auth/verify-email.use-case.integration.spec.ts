@@ -4,8 +4,10 @@ import { PrismaClient } from '@prisma/client';
 import { VerifyEmailUseCase } from './verify-email.use-case';
 import { PrismaEmailVerificationTokenRepository } from '../../infrastructure/repositories/prisma-email-verification-token.repository';
 import { PrismaUserRepository } from '../../infrastructure/repositories/prisma-user.repository';
+import { PrismaUniversityRepository } from '../../infrastructure/repositories/prisma-university.repository';
 import { EMAIL_VERIFICATION_TOKEN_REPOSITORY } from '../../domain/repositories/email-verification-token.repository.interface';
 import { USER_REPOSITORY } from '../../domain/repositories/user.repository.interface';
+import { UNIVERSITY_REPOSITORY } from '../../domain/repositories/university.repository.interface';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { AppError } from '../../domain/errors/app-error';
 
@@ -29,6 +31,7 @@ describe('VerifyEmailUseCase (integration)', () => {
         PrismaService,
         { provide: EMAIL_VERIFICATION_TOKEN_REPOSITORY, useClass: PrismaEmailVerificationTokenRepository },
         { provide: USER_REPOSITORY, useClass: PrismaUserRepository },
+        { provide: UNIVERSITY_REPOSITORY, useClass: PrismaUniversityRepository },
       ],
     })
       .overrideProvider(PrismaService)
@@ -54,14 +57,18 @@ describe('VerifyEmailUseCase (integration)', () => {
     await prisma.user.deleteMany({ where: { universityId } });
   });
 
-  async function seedUserWithToken(overrides: { expiresAt?: Date; usedAt?: Date } = {}) {
+  async function seedUserWithToken(
+    overrides: { expiresAt?: Date; usedAt?: Date; studentStatus?: 'none' | 'pending' | 'verified' | 'rejected'; email?: string } = {},
+  ) {
     const user = await prisma.user.create({
       data: {
-        email: `test-${Date.now()}@test-integration.de`,
+        email: overrides.email ?? `test-${Date.now()}@test-integration.de`,
         passwordHash: 'irrelevant',
         firstName: 'Test',
         lastName: 'User',
         universityId,
+        accountType: 'student',
+        studentStatus: overrides.studentStatus ?? 'none',
       },
     });
     const rawToken = crypto.randomBytes(32).toString('hex');
@@ -87,6 +94,16 @@ describe('VerifyEmailUseCase (integration)', () => {
 
     const updatedToken = await prisma.emailVerificationToken.findFirst({ where: { userId: user.id } });
     expect(updatedToken?.usedAt).not.toBeNull();
+  });
+
+  it('promotes a pending student to verified when the email domain matches the partner university', async () => {
+    const { user, rawToken } = await seedUserWithToken({ studentStatus: 'pending' });
+    await useCase.execute(rawToken);
+
+    const updated = await prisma.user.findUnique({ where: { id: user.id } });
+    expect(updated?.emailVerified).toBe(true);
+    expect(updated?.studentStatus).toBe('verified');
+    expect(updated?.isVerifiedStudent).toBe(true);
   });
 
   it('throws INVALID_OR_EXPIRED_TOKEN for an already-used token', async () => {

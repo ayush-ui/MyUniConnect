@@ -1,11 +1,14 @@
-import { User } from '../entities/user.entity';
+import { AccountType, StudentStatus, User } from '../entities/user.entity';
 
 export interface CreateUserData {
   email: string;
   passwordHash: string;
   firstName: string;
   lastName: string;
-  universityId: string;
+  universityId: string | null;
+  accountType: AccountType;
+  studentStatus: StudentStatus;
+  claimedUniversityName?: string | null;
 }
 
 export interface IUserRepository {

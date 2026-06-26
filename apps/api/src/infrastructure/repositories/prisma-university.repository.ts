@@ -7,6 +7,11 @@ import { University } from '../../domain/entities/university.entity';
 export class PrismaUniversityRepository implements IUniversityRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async findById(id: string): Promise<University | null> {
+    const row = await this.prisma.university.findUnique({ where: { id } });
+    return row ? this.toDomain(row) : null;
+  }
+
   async findByDomain(domain: string): Promise<University | null> {
     const row = await this.prisma.university.findUnique({ where: { emailDomain: domain } });
     return row ? this.toDomain(row) : null;

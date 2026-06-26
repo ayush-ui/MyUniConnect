@@ -24,6 +24,7 @@ _Last verified: 2026-06-25 (live against running API + DB)._
 | **2 — Marketplace** | ✅ Complete (8 use cases: create/list/get/my/categories/presigned-url/update/status) | ✅ Complete (grid, detail, create) | covered in counts above |
 | **3 — Clubs** | ⬜ Schema only (Prisma models exist) | ⬜ Not started | — |
 | **4 — Housing** | ⬜ Schema only (Prisma models exist) | ⬜ Not started | — |
+| **5 — Identity v2** (account types, verified-student gating) | ⬜ Planned (design done) | ⬜ Planned | — |
 
 **Known gaps (tracked below & in the Execution Plan):**
 - ~~Mobile screen/component tests missing~~ — **done in Phase 0**: `components/ui/*`, auth screens, and marketplace screens now covered (mobile 66 → 112 tests).
@@ -31,7 +32,8 @@ _Last verified: 2026-06-25 (live against running API + DB)._
 - Email delivery works via Resend (`mail.unisyncapp.com` verified); resend is now rate-limited 3/hour per email (DEBT-012 resolved).
 
 > **Execution sequence and testing strategy:** see [`docs/EXECUTION_PLAN.md`](EXECUTION_PLAN.md).
-> **Next epic:** Housing (Epic 4) — it mirrors the proven Marketplace pattern — then Clubs (Epic 3).
+> **Next:** **Epic 5 — Identity v2** (account types + verified-student posting gate) lands *before* Housing, because Housing inherits the "students post, others browse" rule. Then Housing (Epic 4), then Clubs (Epic 3).
+> Product/UX context for Identity v2: `BUSINESS_MODEL.md` §2 and `docs/mobile/UI_BRIEF-account-types-and-signup.md`.
 
 ---
 
@@ -91,7 +93,25 @@ Goal: Working authentication end-to-end on both API and mobile. A user can regis
 | 2.11 | Create listing UI | `[x]` | Photo picker (expo-image-picker), category/condition pickers, students-only toggle |
 | 2.12 | Marketplace API layer | `[x]` | `lib/api/marketplace.ts` — /api/v1 prefix fixed; 7 missing methods added; 21 unit tests |
 
-### Epic 4 — Housing & Sublets  _(next up — mirrors Marketplace)_
+### Epic 5 — Identity v2: Account Types & Student Verification  _(PLANNED — do before/with Housing)_
+> Files: `docs/epics/EPIC-001-AUTH.md` (revised UC-1.1, new UC-1.7/1.8), `docs/ARCHITECTURE.md` (Identity model), `docs/mobile/UI_BRIEF-account-types-and-signup.md`.
+> **Why now:** posting must be gated to verified students *before* Housing ships (housing inherits the same "students post, others browse" rule). Reasoning in `BUSINESS_MODEL.md` §2.
+
+| # | Story | Status | Notes |
+|---|-------|--------|-------|
+| 5.1 | Schema migration: `account_type`, `student_status`, `is_verified_student`, nullable `university_id`, `claimed_university_name`; `StudentVerificationRequest` table | `[ ]` | additive; backfill existing users as verified students |
+| 5.2 | Revise `RegisterUser` (UC-1.1): account types, partner vs "Other", no domain rejection | `[ ]` | + revised/expanded specs |
+| 5.3 | Email-domain → partner detection; promote to `verified` on email verification (UC-1.2) | `[ ]` | the "sort student/non-student emails" task |
+| 5.4 | `VerifiedStudentGuard` + `403 STUDENT_VERIFICATION_REQUIRED` on create endpoints (mktplace + housing) | `[ ]` | UC-1.8; add `isVerifiedStudent` to JWT + `/auth/me` |
+| 5.5 | `GET /auth/universities` (UC-1.7) for the dropdown | `[ ]` | |
+| 5.6 | Fix `isVerifiedStudent: !!user` in marketplace controller → real flag | `[ ]` | resolves the v1 shortcut (see TECHNICAL_DEBT) |
+| M5.1 | Signup redesign: student chooser → searchable university picker → "Other" free-text → check-email variants | `[ ]` | per UI brief; needs design first |
+| M5.2 | `VerifiedStudentBadge` component (verified / pending / none) | `[ ]` | per UI brief |
+| M5.3 | Gate post entry points + explanatory sheets (pending / non-student) | `[ ]` | |
+| M5.4 | Account/profile status panel (incl. pending "under review") | `[ ]` | |
+| M5.5 | Tests: signup branches, badge states, gating | `[ ]` | |
+
+### Epic 4 — Housing & Sublets  _(after Identity v2 — mirrors Marketplace)_
 > File: `docs/epics/EPIC-004-HOUSING.md` · Build order: **before Clubs**.
 > Convention: use cases under `apps/api/src/application/housing/`, controller under `apps/api/src/presentation/housing/` (matches Marketplace, not the older path in the epic doc).
 
@@ -143,8 +163,10 @@ Goal: Working authentication end-to-end on both API and mobile. A user can regis
 
 | Epic | Feature | Notes |
 |------|---------|-------|
-| Auth | Multi-university support (UI to add universities) | Schema already supports it |
+| **CMS / Admin** | **Student-verification approval tool** (separate admin app + account): list `StudentVerificationRequest` queue, approve/decline, auto-add the approved "Other" university as a partner, upgrade the user to `verified_student`, notify them. | **Required to fully close the Identity v2 "Other" loop.** Until built, "Other"/pending students are approved manually by the team out-of-band. |
+| Auth | Multi-university support (admin-driven onboarding) | Falls out of the CMS above; schema already supports it |
 | Auth | OAuth SSO (university IdP) | After email flow proven |
+| Auth | Non-student → student "upgrade" / re-apply flow | Let an existing non-student request student verification without re-registering |
 | Marketplace | In-app messaging between buyer/seller | Full chat feature |
 | Marketplace | Offer / negotiation flow | |
 | Marketplace | Reporting / flagging listings | |

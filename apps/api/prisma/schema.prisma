@@ -28,31 +28,72 @@ enum UserRole {
   admin
 }
 
-model User {
-  id              String    @id @default(uuid())
-  email           String    @unique
-  passwordHash    String    @map("password_hash")
-  firstName       String    @map("first_name")
-  lastName        String    @map("last_name")
-  universityId    String    @map("university_id")
-  emailVerified   Boolean   @default(false) @map("email_verified")
-  emailVerifiedAt DateTime? @map("email_verified_at")
-  role            UserRole  @default(student)
-  deletedAt       DateTime? @map("deleted_at")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+enum AccountType {
+  student
+  non_student
+}
 
-  university              University               @relation(fields: [universityId], references: [id])
-  emailVerificationTokens EmailVerificationToken[]
-  refreshTokens           RefreshToken[]
-  marketplaceListings     MarketplaceListing[]
-  createdClubs            Club[]
-  clubMemberships         ClubMembership[]
-  clubPosts               ClubPost[]
-  housingListings         HousingListing[]
+enum StudentStatus {
+  none
+  pending
+  verified
+  rejected
+}
+
+model User {
+  id                    String        @id @default(uuid())
+  email                 String        @unique
+  passwordHash          String        @map("password_hash")
+  firstName             String        @map("first_name")
+  lastName              String        @map("last_name")
+  universityId          String?       @map("university_id")
+  emailVerified         Boolean       @default(false) @map("email_verified")
+  emailVerifiedAt       DateTime?     @map("email_verified_at")
+  accountType           AccountType   @default(student) @map("account_type")
+  studentStatus         StudentStatus @default(none) @map("student_status")
+  isVerifiedStudent     Boolean       @default(false) @map("is_verified_student")
+  claimedUniversityName String?       @map("claimed_university_name")
+  role                  UserRole      @default(student)
+  deletedAt             DateTime?     @map("deleted_at")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  university                  University?                  @relation(fields: [universityId], references: [id])
+  emailVerificationTokens     EmailVerificationToken[]
+  refreshTokens               RefreshToken[]
+  marketplaceListings         MarketplaceListing[]
+  createdClubs                Club[]
+  clubMemberships             ClubMembership[]
+  clubPosts                   ClubPost[]
+  housingListings             HousingListing[]
+  studentVerificationRequests StudentVerificationRequest[]
 
   @@index([universityId])
   @@map("users")
+}
+
+enum VerificationRequestStatus {
+  pending
+  approved
+  rejected
+}
+
+model StudentVerificationRequest {
+  id                    String                    @id @default(uuid())
+  userId                String                    @map("user_id")
+  claimedUniversityName String                    @map("claimed_university_name")
+  emailDomain           String                    @map("email_domain")
+  status                VerificationRequestStatus @default(pending)
+  reviewedBy            String?                   @map("reviewed_by")
+  reviewedAt            DateTime?                 @map("reviewed_at")
+  decisionNote          String?                   @map("decision_note")
+  createdAt             DateTime                  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("student_verification_requests")
 }
 
 model EmailVerificationToken {

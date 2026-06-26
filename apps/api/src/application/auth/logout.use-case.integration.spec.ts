@@ -78,7 +78,7 @@ describe('LogoutUseCase (integration)', () => {
   });
 
   async function seedRefreshToken(): Promise<string> {
-    const rawToken = tokenService.signRefreshToken({ sub: userId, role: 'student' });
+    const rawToken = tokenService.signRefreshToken({ sub: userId, role: 'student', accountType: 'student', studentStatus: 'verified', isVerifiedStudent: true });
     // rawToken is a random opaque hex string; see NestTokenService
     const hash = crypto.createHash('sha256').update(rawToken).digest('hex');
     await prisma.refreshToken.create({

@@ -21,7 +21,7 @@ _Created: 2026-06-25. Companion to [`ROADMAP.md`](ROADMAP.md) (status board) and
 | Backend integration | Jest + real Postgres (`postgres_test`:5433) | Use case + Prisma repo against DB; external services faked | `*.integration.spec.ts`; run `pnpm test:integration` |
 | Mobile unit | Jest + jest-expo | API layers, hooks, context, storage | `*.spec.ts(x)` next to source |
 | Mobile component/screen | `@testing-library/react-native` | Render, validation, error mapping, navigation (mock API layer) | `*.spec.tsx` next to component/screen |
-| E2E (Phase 5) | Maestro (preferred) or Detox | register→login→browse happy path on a simulator | `e2e/` flows; not in CI until stable |
+| E2E (Phase 6) | Maestro (preferred) or Detox | register→login→browse happy path on a simulator | `e2e/` flows; not in CI until stable |
 
 **Rules** (from `ARCHITECTURE.md`): every use case ships with a unit spec; data-touching use cases also get an integration spec; mock external services (email, S3); never call raw `fetch` in components — go through `lib/api/`. A PR is not done until `pnpm test` (api), `pnpm test:integration` (api), and `pnpm --filter mobile test` are all green.
 
@@ -40,21 +40,43 @@ Closed the testing gap on what's *already shipped* before adding new surface are
 
 ---
 
-## Phase 1 — Epic 4 Housing, backend
+## Phase 1 — Identity v2: account types & verified-student gating  *(NEW — do before Housing)*
+
+Why first: Housing inherits the "students post, others browse" rule, so the gate must exist before we add a second posting surface. Full design in `ARCHITECTURE.md` "Identity & Account Model", `docs/epics/EPIC-001-AUTH.md`, and the UX in `docs/mobile/UI_BRIEF-account-types-and-signup.md`.
+
+**Backend — ✅ DONE (2026-06-26).** Migration `20260626150721_identity_v2_account_types` (account-type/student-status/verified/claimed-name columns, nullable `university_id`, `StudentVerificationRequest` table, backfill existing users → verified). RegisterUser branches + dropped `UNIVERSITY_NOT_SUPPORTED`; VerifyEmail auto-promotes partner-domain students; `GET /auth/universities`; `VerifiedStudentGuard` (403 `STUDENT_VERIFICATION_REQUIRED`) on marketplace create; `accountType`/`studentStatus`/`isVerifiedStudent` in JWT + `/auth/me` (+ `university`); DEBT-014 stub replaced with the real flag. Tests: **140 unit + 29 integration** green; verified live via curl (all register branches, auto-promote, gated create 403, verified create reaches business logic). *Mobile half below is next, after Figma reconnect.*
+1. **Migration**: add `account_type`, `student_status`, `is_verified_student`, `claimed_university_name`; make `university_id` nullable; add `StudentVerificationRequest`. Backfill existing users → verified students. (story 5.1)
+2. **Revise `RegisterUser`** (UC-1.1): account-type branches, partner vs "Other", drop `UNIVERSITY_NOT_SUPPORTED`. Revise+expand specs. (5.2)
+3. **Email-domain detection** + promote pending→verified on email verification (UC-1.2). (5.3)
+4. **`VerifiedStudentGuard`** + `403 STUDENT_VERIFICATION_REQUIRED`; add `isVerifiedStudent`/`accountType`/`studentStatus` to JWT payload + `/auth/me`. Apply guard to marketplace create (and housing create when built). (5.4)
+5. **`GET /auth/universities`** (UC-1.7). (5.5)
+6. **Fix** `isVerifiedStudent: !!user` in marketplace controller → real flag (resolves DEBT-014). (5.6)
+
+**Mobile** (after the UI agent delivers designs per the brief)
+7. Signup redesign (chooser → searchable university picker → "Other" free-text → check-email variants). (M5.1)
+8. `VerifiedStudentBadge` (verified/pending/none). (M5.2)
+9. Gate post entry points + explanatory sheets; account status panel. (M5.3, M5.4)
+10. Update `lib/api/auth.ts` types (`MeResult` gains the new fields) + `register` signature.
+
+**Done when:** non-students can sign up + browse but get `403`/gated UI on create; partner students auto-verify on email link; "Other" students land `pending` with a `StudentVerificationRequest`; all new specs green; `/auth/me` carries the new fields. *(Manual "Other" approval stays out-of-band until the CMS — DEBT-017.)*
+
+---
+
+## Phase 2 — Epic 4 Housing, backend
 
 Mirror the Marketplace vertical slice (it's the proven template). Build order matches `ROADMAP` stories 4.2–4.8.
 
 1. Domain: `housing-listing.entity.ts` (+ status transitions), `housing-image.entity.ts`, repo interface.
 2. Infrastructure: `prisma-housing-listing.repository.ts`, `housing.infrastructure.module.ts` (reuse `STORAGE_SERVICE`).
 3. Application use cases (UC-4.1…4.6) + `housing.application.module.ts`.
-4. Presentation: `housing.controller.ts` + DTOs + Swagger; `OptionalJwtAuthGuard` on public GETs.
+4. Presentation: `housing.controller.ts` + DTOs + Swagger; `OptionalJwtAuthGuard` on public GETs; **`VerifiedStudentGuard` on create** (from Phase 1).
 5. Register module in `app.module.ts`.
 
 **Done when:** all UC unit specs + create/list/get integration specs green; endpoints verified live via curl.
 
 ---
 
-## Phase 2 — Epic 4 Housing, mobile
+## Phase 3 — Epic 4 Housing, mobile
 
 - `lib/api/housing.ts` (typed methods) + spec.
 - `useHousing` hook (mirror `useMarketplace`) + spec.
@@ -65,7 +87,7 @@ Mirror the Marketplace vertical slice (it's the proven template). Build order ma
 
 ---
 
-## Phase 3 — Epic 3 Clubs, backend
+## Phase 4 — Epic 3 Clubs, backend
 
 New concepts vs. Marketplace: membership, roles (admin/member), feed. Follow `EPIC-003-CLUBS.md` UC-3.1…3.9.
 
@@ -78,7 +100,7 @@ New concepts vs. Marketplace: membership, roles (admin/member), feed. Follow `EP
 
 ---
 
-## Phase 4 — Epic 3 Clubs, mobile
+## Phase 5 — Epic 3 Clubs, mobile
 
 - `lib/api/clubs.ts` + spec; `useClubs` hook + spec.
 - `(tabs)/clubs/` route group: discovery, detail, feed; add Clubs tab.
@@ -86,7 +108,7 @@ New concepts vs. Marketplace: membership, roles (admin/member), feed. Follow `EP
 
 ---
 
-## Phase 5 — Integration hardening & E2E
+## Phase 6 — Integration hardening & E2E
 
 - [ ] FT.4 — Evaluate Maestro vs Detox; add one happy-path E2E (register→verify→login→browse marketplace/housing).
 - [ ] Verify deep-link email-verification path end-to-end on a device.
@@ -97,6 +119,18 @@ New concepts vs. Marketplace: membership, roles (admin/member), feed. Follow `EP
 ## Spec File Tracker
 
 Every spec file this plan introduces. Update the Status column as they land (`[ ]` → `[x]`). Keep new specs next to their source, matching existing naming.
+
+### Identity v2 (Epic 5)
+| Spec file | Type | Status |
+|-----------|------|--------|
+| `apps/api/src/application/auth/register-user.use-case.spec.ts` _(revise + expand for account types / "Other")_ | unit | `[x]` |
+| `apps/api/src/application/auth/register-user.use-case.integration.spec.ts` _(new — pending request + nullable university)_ | integ | `[x]` |
+| `apps/api/src/application/auth/verify-email.use-case.spec.ts` _(extend — pending→verified promotion)_ | unit | `[x]` |
+| `apps/api/src/application/auth/list-universities.use-case.spec.ts` | unit | `[x]` |
+| `apps/api/src/presentation/auth/guards/verified-student.guard.spec.ts` | unit | `[x]` |
+| `apps/mobile/app/(auth)/register.spec.tsx` _(extend — student/non-student + "Other" branches)_ | screen | `[ ]` |
+| `apps/mobile/components/ui/VerifiedStudentBadge.spec.tsx` | component | `[ ]` |
+| `apps/mobile/lib/api/auth.spec.ts` _(extend — new register fields, MeResult fields)_ | unit | `[ ]` |
 
 ### Backend — Housing (Epic 4)
 | Spec file | Type | Status |

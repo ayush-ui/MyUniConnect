@@ -8,10 +8,10 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Link, useRouter } from 'expo-router';
+import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { Button } from '../../components/ui/Button';
 import { FormField } from '../../components/ui/FormField';
-import { authApi } from '../../lib/api/auth';
+import { authApi, AccountType } from '../../lib/api/auth';
 import { ApiError } from '../../lib/api/client';
 
 interface FormValues {
@@ -32,7 +32,7 @@ interface FormErrors {
 
 const PASSWORD_RULES = /^(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}$/;
 
-function validateForm(values: FormValues): FormErrors {
+function validateForm(values: FormValues, isStudent: boolean): FormErrors {
   const errors: FormErrors = {};
 
   if (!values.firstName.trim()) errors.firstName = 'First name is required';
@@ -41,7 +41,7 @@ function validateForm(values: FormValues): FormErrors {
   if (!values.email.trim()) {
     errors.email = 'Email is required';
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) {
-    errors.email = 'Enter a valid university email';
+    errors.email = isStudent ? 'Enter a valid university email' : 'Enter a valid email';
   }
 
   if (!values.password) {
@@ -61,6 +61,15 @@ function validateForm(values: FormValues): FormErrors {
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{
+    accountType?: string;
+    universityId?: string;
+    claimedUniversityName?: string;
+  }>();
+
+  const accountType: AccountType = params.accountType === 'non_student' ? 'non_student' : 'student';
+  const isStudent = accountType === 'student';
+
   const [values, setValues] = useState<FormValues>({
     firstName: '',
     lastName: '',
@@ -83,7 +92,7 @@ export default function RegisterScreen() {
   }
 
   async function handleRegister() {
-    const validationErrors = validateForm(values);
+    const validationErrors = validateForm(values, isStudent);
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
@@ -92,22 +101,33 @@ export default function RegisterScreen() {
     setLoading(true);
     setServerError(null);
     try {
-      await authApi.register({
+      const result = await authApi.register({
         email: values.email.trim().toLowerCase(),
         password: values.password,
         firstName: values.firstName.trim(),
         lastName: values.lastName.trim(),
+        accountType,
+        universityId: params.universityId || undefined,
+        claimedUniversityName: params.claimedUniversityName || undefined,
       });
+      // Which check-email message to show. Partner-university students take the
+      // automated "start posting" path; "Other" students are under review;
+      // non-students simply browse. (The backend returns studentStatus=pending
+      // for both partner and Other students, so we key off what was selected.)
+      const variant =
+        result.accountType === 'non_student'
+          ? 'browsing'
+          : params.claimedUniversityName
+            ? 'review'
+            : 'posting';
       router.replace({
         pathname: '/(auth)/check-email',
-        params: { email: values.email.trim().toLowerCase() },
+        params: { email: values.email.trim().toLowerCase(), variant },
       });
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 409 || err.code === 'EMAIL_ALREADY_REGISTERED') {
           setErrors((prev) => ({ ...prev, email: 'This email is already registered' }));
-        } else if (err.code === 'UNIVERSITY_NOT_SUPPORTED') {
-          setErrors((prev) => ({ ...prev, email: 'This university domain is not supported yet' }));
         } else if (err.code === 'WEAK_PASSWORD') {
           setErrors((prev) => ({ ...prev, password: 'Password does not meet requirements' }));
         } else {
@@ -136,10 +156,12 @@ export default function RegisterScreen() {
           <View className="flex-1 px-6 pt-8">
             <View className="gap-2 mb-8">
               <Text className="text-[22px] font-jakarta-medium text-neutral-900">
-                Create account
+                Create your account
               </Text>
               <Text className="text-sm font-jakarta text-neutral-600">
-                Join with your university email.
+                {isStudent
+                  ? 'Use your university email for fast verification.'
+                  : 'Create an account to browse listings.'}
               </Text>
             </View>
 
@@ -178,8 +200,8 @@ export default function RegisterScreen() {
               </View>
 
               <FormField
-                label="University email"
-                placeholder="student@tu-ilmenau.de"
+                label={isStudent ? 'University email' : 'Email'}
+                placeholder={isStudent ? 'student@tu-ilmenau.de' : 'your@email.com'}
                 value={values.email}
                 onChangeText={setField('email')}
                 keyboardType="email-address"

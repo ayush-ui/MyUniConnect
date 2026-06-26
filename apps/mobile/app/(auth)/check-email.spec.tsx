@@ -28,7 +28,7 @@ describe('CheckEmailScreen', () => {
   it('resends the verification email and shows a confirmation', async () => {
     mockResend.mockResolvedValue({ message: 'ok' });
     render(<CheckEmailScreen />);
-    fireEvent.press(screen.getByText('Resend verification email'));
+    fireEvent.press(screen.getByText("Didn't get it? Resend email"));
 
     await waitFor(() => {
       expect(mockResend).toHaveBeenCalledWith('student@tu-ilmenau.de');
@@ -39,7 +39,7 @@ describe('CheckEmailScreen', () => {
   it('shows an error message when resend fails', async () => {
     mockResend.mockRejectedValue(new Error('network'));
     render(<CheckEmailScreen />);
-    fireEvent.press(screen.getByText('Resend verification email'));
+    fireEvent.press(screen.getByText("Didn't get it? Resend email"));
 
     await waitFor(() => {
       expect(screen.getByText('Could not send email. Please try again.')).toBeTruthy();
@@ -55,7 +55,7 @@ describe('CheckEmailScreen', () => {
   it('does not call resend when no email param is present', () => {
     mockParams = {};
     render(<CheckEmailScreen />);
-    fireEvent.press(screen.getByText('Resend verification email'));
+    fireEvent.press(screen.getByText("Didn't get it? Resend email"));
     expect(mockResend).not.toHaveBeenCalled();
   });
 });

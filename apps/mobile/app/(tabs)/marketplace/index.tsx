@@ -10,9 +10,25 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { storageUrl, Listing, CONDITION_LABELS } from '../../../lib/api/marketplace';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
+import { LockedSheet } from '../../../components/ui/LockedSheet';
 import { useMarketplace } from '../../../hooks/useMarketplace';
+import { useAuth } from '../../../context/AuthContext';
+
+/** Copy for the posting-locked sheet, by why-they-can't-post. */
+const LOCKED_COPY = {
+  pending: {
+    title: 'Posting is almost ready',
+    message:
+      "Your student status is being reviewed. Once verified, you'll be able to create listings. You can browse everything in the meantime.",
+  },
+  nonStudent: {
+    title: "Posting isn't available",
+    message: 'Only verified students can create listings. You can browse all listings as a visitor.',
+  },
+} as const;
 
 function formatPrice(priceCents: number): string {
   if (priceCents === 0) return 'Free';
@@ -66,6 +82,8 @@ function ListingCard({
 
 export default function MarketplaceScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+  const [lockedVisible, setLockedVisible] = useState(false);
   const {
     categories,
     listings,
@@ -79,6 +97,17 @@ export default function MarketplaceScreen() {
 
   const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
 
+  const canPost = !!user?.isVerifiedStudent;
+  const lockedCopy = user?.accountType === 'non_student' ? LOCKED_COPY.nonStudent : LOCKED_COPY.pending;
+
+  function handleCreatePress() {
+    if (canPost) {
+      router.push('/(tabs)/marketplace/create');
+    } else {
+      setLockedVisible(true);
+    }
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-neutral-50">
       <View className="flex-1">
@@ -87,11 +116,14 @@ export default function MarketplaceScreen() {
           <View className="flex-row items-center justify-between mb-4">
             <Text className="text-[22px] font-jakarta-medium text-neutral-900">Marketplace</Text>
             <TouchableOpacity
-              className="bg-primary-400 rounded-full w-9 h-9 items-center justify-center"
-              onPress={() => router.push('/(tabs)/marketplace/create')}
+              className={`rounded-full w-9 h-9 items-center justify-center ${canPost ? 'bg-primary-400' : 'bg-neutral-200'}`}
+              onPress={handleCreatePress}
+              accessibilityLabel={canPost ? 'Create listing' : 'Posting locked'}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Text className="text-neutral-50 text-lg font-jakarta-medium leading-none">+</Text>
+              <Text className={`text-lg font-jakarta-medium leading-none ${canPost ? 'text-neutral-50' : 'text-neutral-600'}`}>
+                +
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -158,6 +190,13 @@ export default function MarketplaceScreen() {
           />
         )}
       </View>
+
+      <LockedSheet
+        visible={lockedVisible}
+        title={lockedCopy.title}
+        message={lockedCopy.message}
+        onClose={() => setLockedVisible(false)}
+      />
     </SafeAreaView>
   );
 }

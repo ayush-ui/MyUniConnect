@@ -22,9 +22,9 @@ export class ResendEmailService implements IEmailService {
     const { error } = await this.client.emails.send({
       from: this.from,
       to,
-      subject: 'Verify your MyUniConnect email',
+      subject: 'Verify your UniSync email',
       html: this.buildVerificationHtml(link),
-      text: `Welcome to MyUniConnect!\n\nVerify your email by opening this link:\n${link}\n\nThis link expires in 24 hours. If you did not create an account, you can ignore this email.`,
+      text: `Welcome to UniSync!\n\nVerify your email by opening this link:\n${link}\n\nThis link expires in 24 hours. If you did not create an account, you can ignore this email.`,
     });
 
     if (error) {
@@ -46,11 +46,11 @@ export class ResendEmailService implements IEmailService {
           <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;padding:40px;">
             <tr>
               <td>
-                <h1 style="margin:0 0 16px;font-size:22px;color:#111827;">Welcome to MyUniConnect</h1>
+                <h1 style="margin:0 0 16px;font-size:22px;color:#28241d;">Welcome to UniSync</h1>
                 <p style="margin:0 0 24px;font-size:15px;line-height:1.5;color:#4b5563;">
                   Confirm your university email address to activate your account.
                 </p>
-                <a href="${link}" style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:12px 24px;border-radius:8px;">
+                <a href="${link}" style="display:inline-block;background:#2e5559;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:12px 24px;border-radius:8px;">
                   Verify email
                 </a>
                 <p style="margin:24px 0 0;font-size:13px;line-height:1.5;color:#9ca3af;">

@@ -24,7 +24,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1');
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('MyUniConnect API')
+    .setTitle('UniSync API')
     .setDescription(
       'University-exclusive student platform. All endpoints (except auth) require a verified student account.',
     )

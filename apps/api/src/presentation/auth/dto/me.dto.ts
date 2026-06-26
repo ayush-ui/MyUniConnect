@@ -18,5 +18,7 @@ export class MeResponseDto {
   @ApiProperty({ description: 'Derived gate for posting (student & verified & email-verified).' })
   isVerifiedStudent: boolean;
   @ApiProperty({ type: MeUniversityDto, nullable: true }) university: MeUniversityDto | null;
+  @ApiProperty({ nullable: true, description: 'Free-text university from the "Other" path (pending students).' })
+  claimedUniversityName: string | null;
   @ApiProperty() createdAt: Date;
 }

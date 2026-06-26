@@ -40,7 +40,9 @@ Closed the testing gap on what's *already shipped* before adding new surface are
 
 ---
 
-## Phase 1 — Identity v2: account types & verified-student gating  *(NEW — do before Housing)*
+## Phase 1 — Identity v2: account types & verified-student gating  ✅ DONE (2026-06-26, backend + mobile)
+
+Merged to `main` (branch `feat/identity-v2-account-types`: backend `999a212`, mobile `8db7bc2`). **Mobile half done:** signup chooser → searchable university picker → "Other" free-text → register fields → 3 check-email variants; `VerifiedStudentBadge` + `SearchablePicker` + `LockedSheet`; new Profile tab with 3 account states + pending "under review" panel; marketplace "+" gated via `LockedSheet` + defensive 403; `lib/api/auth.ts` types updated (`/auth/me` also returns `claimedUniversityName`). Built against captured Figma frames (`81:2`–`99:93`). **UniSync branding** landed too (app name/icon/splash, brand kit in `apps/mobile/assets/brand/`, email + Swagger copy). Tests: **mobile 112→133; API 124→140 unit + 25→29 integ.** New debt: DEBT-018/019/020/021. *Next: Phase 2 — Housing backend.*
 
 Why first: Housing inherits the "students post, others browse" rule, so the gate must exist before we add a second posting surface. Full design in `ARCHITECTURE.md` "Identity & Account Model", `docs/epics/EPIC-001-AUTH.md`, and the UX in `docs/mobile/UI_BRIEF-account-types-and-signup.md`.
 
@@ -52,11 +54,11 @@ Why first: Housing inherits the "students post, others browse" rule, so the gate
 5. **`GET /auth/universities`** (UC-1.7). (5.5)
 6. **Fix** `isVerifiedStudent: !!user` in marketplace controller → real flag (resolves DEBT-014). (5.6)
 
-**Mobile** (after the UI agent delivers designs per the brief)
-7. Signup redesign (chooser → searchable university picker → "Other" free-text → check-email variants). (M5.1)
-8. `VerifiedStudentBadge` (verified/pending/none). (M5.2)
-9. Gate post entry points + explanatory sheets; account status panel. (M5.3, M5.4)
-10. Update `lib/api/auth.ts` types (`MeResult` gains the new fields) + `register` signature.
+**Mobile — ✅ DONE (2026-06-26).** Built against the captured Figma frames.
+7. Signup redesign (chooser → searchable university picker → "Other" free-text → check-email variants). (M5.1) ✅
+8. `VerifiedStudentBadge` (verified/pending/visitor). (M5.2) ✅
+9. Gate post entry points + explanatory sheets; account status panel. (M5.3, M5.4) ✅
+10. Update `lib/api/auth.ts` types (`MeResult` gains the new fields) + `register` signature. ✅
 
 **Done when:** non-students can sign up + browse but get `403`/gated UI on create; partner students auto-verify on email link; "Other" students land `pending` with a `StudentVerificationRequest`; all new specs green; `/auth/me` carries the new fields. *(Manual "Other" approval stays out-of-band until the CMS — DEBT-017.)*
 
@@ -128,9 +130,13 @@ Every spec file this plan introduces. Update the Status column as they land (`[ 
 | `apps/api/src/application/auth/verify-email.use-case.spec.ts` _(extend — pending→verified promotion)_ | unit | `[x]` |
 | `apps/api/src/application/auth/list-universities.use-case.spec.ts` | unit | `[x]` |
 | `apps/api/src/presentation/auth/guards/verified-student.guard.spec.ts` | unit | `[x]` |
-| `apps/mobile/app/(auth)/register.spec.tsx` _(extend — student/non-student + "Other" branches)_ | screen | `[ ]` |
-| `apps/mobile/components/ui/VerifiedStudentBadge.spec.tsx` | component | `[ ]` |
-| `apps/mobile/lib/api/auth.spec.ts` _(extend — new register fields, MeResult fields)_ | unit | `[ ]` |
+| `apps/mobile/app/(auth)/register.spec.tsx` _(extend — student/non-student + "Other" branches)_ | screen | `[x]` |
+| `apps/mobile/app/(auth)/signup-account-type.spec.tsx` _(new — chooser routing)_ | screen | `[x]` |
+| `apps/mobile/app/(auth)/signup-university.spec.tsx` _(new — picker + "Other" reveal)_ | screen | `[x]` |
+| `apps/mobile/app/(tabs)/profile.spec.tsx` _(new — 3 account states + pending panel)_ | screen | `[x]` |
+| `apps/mobile/app/(tabs)/marketplace/index.spec.tsx` _(extend — posting gate sheets)_ | screen | `[x]` |
+| `apps/mobile/components/ui/VerifiedStudentBadge.spec.tsx` | component | `[x]` |
+| `apps/mobile/lib/api/auth.spec.ts` _(extend — new register fields, MeResult fields)_ | unit | `[x]` |
 
 ### Backend — Housing (Epic 4)
 | Spec file | Type | Status |

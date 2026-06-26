@@ -250,7 +250,15 @@ export default function CreateListingScreen() {
       ]);
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.code === 'LISTING_LIMIT_REACHED') {
+        if (err.code === 'STUDENT_VERIFICATION_REQUIRED' || err.status === 403) {
+          // Defensive: the create entry point is already gated, but if the
+          // server rejects (e.g. status changed mid-session), explain and exit.
+          Alert.alert(
+            'Posting not available',
+            'Only verified students can create listings. You can browse all listings in the meantime.',
+            [{ text: 'OK', onPress: () => router.replace('/(tabs)/marketplace') }],
+          );
+        } else if (err.code === 'LISTING_LIMIT_REACHED') {
           setServerError('You have reached the maximum of 20 active listings.');
         } else if (err.code === 'CATEGORY_NOT_FOUND') {
           setServerError('Selected category is no longer available. Please choose another.');

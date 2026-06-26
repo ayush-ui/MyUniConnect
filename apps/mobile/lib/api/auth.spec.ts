@@ -41,12 +41,19 @@ beforeEach(() => jest.clearAllMocks());
 
 describe('authApi.register', () => {
   it('calls POST /api/v1/auth/register with all required fields', async () => {
-    mockApiFetch.mockResolvedValue({ userId: 'usr-1', message: 'Check your email' });
+    mockApiFetch.mockResolvedValue({
+      userId: 'usr-1',
+      accountType: 'student',
+      studentStatus: 'pending',
+      message: 'Check your email',
+    });
     const result = await authApi.register({
       email: 'student@tu-ilmenau.de',
       password: 'Secure1!',
       firstName: 'Max',
       lastName: 'Muster',
+      accountType: 'student',
+      universityId: 'uni-1',
     });
     expect(mockApiFetch).toHaveBeenCalledWith(
       '/api/v1/auth/register',
@@ -57,20 +64,12 @@ describe('authApi.register', () => {
           password: 'Secure1!',
           firstName: 'Max',
           lastName: 'Muster',
+          accountType: 'student',
+          universityId: 'uni-1',
         }),
       }),
     );
     expect(result.userId).toBe('usr-1');
-  });
-
-  it('re-throws EMAIL_DOMAIN_NOT_ALLOWED ApiError', async () => {
-    const err = new ApiError('EMAIL_DOMAIN_NOT_ALLOWED', 'Not a university email', 422);
-    mockApiFetch.mockRejectedValue(err);
-    const caught = await authApi.register({
-      email: 'user@gmail.com', password: 'Secure1!', firstName: 'Max', lastName: 'Muster',
-    }).catch((e) => e);
-    expect(caught).toBeInstanceOf(ApiError);
-    expect((caught as ApiError).code).toBe('EMAIL_DOMAIN_NOT_ALLOWED');
   });
 
   it('re-throws EMAIL_ALREADY_REGISTERED ApiError', async () => {
@@ -78,6 +77,7 @@ describe('authApi.register', () => {
     mockApiFetch.mockRejectedValue(err);
     const caught = await authApi.register({
       email: 'student@tu-ilmenau.de', password: 'Secure1!', firstName: 'Max', lastName: 'Muster',
+      accountType: 'student', universityId: 'uni-1',
     }).catch((e) => e);
     expect((caught as ApiError).code).toBe('EMAIL_ALREADY_REGISTERED');
   });

@@ -7,6 +7,11 @@ jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
+let mockUser: Record<string, unknown> | null = { isVerifiedStudent: true, accountType: 'student' };
+jest.mock('../../../context/AuthContext', () => ({
+  useAuth: () => ({ user: mockUser }),
+}));
+
 const mockSetSelectedCategoryId = jest.fn();
 const mockRefresh = jest.fn();
 let mockHookState: Record<string, unknown>;
@@ -56,6 +61,7 @@ function setHook(overrides = {}) {
 beforeEach(() => {
   jest.clearAllMocks();
   setHook();
+  mockUser = { isVerifiedStudent: true, accountType: 'student' };
 });
 
 describe('MarketplaceScreen', () => {
@@ -101,9 +107,25 @@ describe('MarketplaceScreen', () => {
     expect(mockPush).toHaveBeenCalledWith('/(tabs)/marketplace/lst-1');
   });
 
-  it('navigates to create on the + button', () => {
+  it('navigates to create on the + button for a verified student', () => {
     render(<MarketplaceScreen />);
     fireEvent.press(screen.getByText('+'));
     expect(mockPush).toHaveBeenCalledWith('/(tabs)/marketplace/create');
+  });
+
+  it('opens the pending locked sheet for a pending student instead of navigating', () => {
+    mockUser = { isVerifiedStudent: false, accountType: 'student' };
+    render(<MarketplaceScreen />);
+    fireEvent.press(screen.getByText('+'));
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(screen.getByText('Posting is almost ready')).toBeTruthy();
+  });
+
+  it('opens the non-student locked sheet for a non-student instead of navigating', () => {
+    mockUser = { isVerifiedStudent: false, accountType: 'non_student' };
+    render(<MarketplaceScreen />);
+    fireEvent.press(screen.getByText('+'));
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(screen.getByText("Posting isn't available")).toBeTruthy();
   });
 });

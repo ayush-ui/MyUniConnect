@@ -1,24 +1,30 @@
 {
   "expo": {
-    "name": "MyUniConnect",
-    "slug": "myuniconnect",
+    "name": "UniSync",
+    "slug": "unisync",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "myuniconnect",
+    "scheme": "unisync",
     "userInterfaceStyle": "automatic",
+    "icon": "./assets/brand/icon/unisync-icon-1024.png",
     "splash": {
+      "image": "./assets/brand/mark/unisync-mark-1024.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#FAF8F5"
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.myuniconnect.app"
+      "bundleIdentifier": "com.unisync.app"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/brand/mark/unisync-mark-1024.png",
+        "backgroundColor": "#2E5559"
       },
-      "package": "com.myuniconnect.app"
+      "package": "com.unisync.app"
+    },
+    "web": {
+      "favicon": "./assets/brand/icon/unisync-icon-64.png"
     },
     "plugins": [
       "expo-router",
@@ -26,7 +32,8 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#ffffff",
+          "image": "./assets/brand/mark/unisync-mark-1024.png",
+          "backgroundColor": "#FAF8F5",
           "resizeMode": "contain"
         }
       ],

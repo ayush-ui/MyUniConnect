@@ -113,6 +113,57 @@ POST /auth/refresh
 
 ---
 
+## Identity & Account Model (v2 — PLANNED, not yet implemented)
+
+> Status: **design only**. This supersedes the v1 behaviour where any account
+> required a partner-university email and any authenticated user was treated as a
+> verified student. Tracked as the **Identity v2** work in ROADMAP / EXECUTION_PLAN.
+> Reasoning lives in `BUSINESS_MODEL.md` §2. The mobile UX contract is in
+> `docs/mobile/UI_BRIEF-account-types-and-signup.md`.
+
+### Two independent axes
+
+1. **Account type** — *what the user claims to be.* Self-declared at signup.
+2. **Verification state** — *what we have proven.* Two separate proofs:
+   - `emailVerified` — proves they control the email (existing; via the link). Required to log in, for **every** account.
+   - `isVerifiedStudent` — proves they are a real student of a **partner** university. Gates all *posting* and student benefits.
+
+These are orthogonal: a user can be email-verified but not a verified student
+(e.g. a non-student, or a student from a not-yet-partner university awaiting review).
+
+### Proposed `User` fields (additive; schema migration later)
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `accountType` | enum `student` \| `non_student` | Self-declared at signup. |
+| `studentStatus` | enum `none` \| `pending` \| `verified` \| `rejected` | `none` for non-students; lifecycle for students. |
+| `isVerifiedStudent` | bool (derived) | `true` iff `accountType=student AND studentStatus=verified AND emailVerified`. The single authorization gate. |
+| `universityId` | **nullable** FK | Set for verified/partner students; null for non-students and pending "Other" students. |
+| `claimedUniversityName` | string? | Free text captured when a student picks **"Other (Not listed)"**, for the review queue. |
+
+> `universityId` becoming nullable is the key migration — today it is required.
+
+### Universities & the "Other" path
+
+- **Partner universities** = `universities` rows with `active = true`. These populate the signup dropdown.
+- A student whose email domain matches a partner university's `emailDomain` and who verifies their email is auto-promoted to `studentStatus = verified` (the **automated** path — *email-domain detection, currently not implemented*).
+- A student who selects **"Other (Not listed)"** (or whose domain doesn't match) is created as `studentStatus = pending` and enqueued as a **`StudentVerificationRequest`** for manual review by the team (future **CMS**). On approval: the university is added/activated as a partner, linked to the user, and the user becomes `verified`. On decline: `rejected`.
+
+### Authorization rule (the moat)
+
+| Capability | Who |
+|------------|-----|
+| Hold an account, log in, **browse** marketplace/housing in-app | Any email-verified user (student **or** non_student) |
+| **Create** any listing (marketplace, housing) | `isVerifiedStudent === true` only → otherwise `403 STUDENT_VERIFICATION_REQUIRED` |
+| Anonymous view of `public` listings via web link | No account (unchanged) |
+
+This must be enforced by a backend `VerifiedStudentGuard` and reflected in the
+JWT/`/auth/me` payload (`isVerifiedStudent`, `accountType`, `studentStatus`) so the
+mobile app can gate UI. Today the marketplace controller fakes this with
+`isVerifiedStudent: !!user` — see TECHNICAL_DEBT.
+
+---
+
 ## Error Handling Convention
 
 All application errors extend `AppError`:

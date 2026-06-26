@@ -1,6 +1,9 @@
 export interface TokenPayload {
   sub: string;
   role: string;
+  accountType: 'student' | 'non_student';
+  studentStatus: 'none' | 'pending' | 'verified' | 'rejected';
+  isVerifiedStudent: boolean;
 }
 
 export interface ITokenService {

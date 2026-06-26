@@ -5,6 +5,7 @@ import {
   EMAIL_VERIFICATION_TOKEN_REPOSITORY,
 } from '../../domain/repositories/email-verification-token.repository.interface';
 import { IUserRepository, USER_REPOSITORY } from '../../domain/repositories/user.repository.interface';
+import { IUniversityRepository, UNIVERSITY_REPOSITORY } from '../../domain/repositories/university.repository.interface';
 import { AppError } from '../../domain/errors/app-error';
 
 export interface VerifyEmailOutput {
@@ -17,6 +18,7 @@ export class VerifyEmailUseCase {
     @Inject(EMAIL_VERIFICATION_TOKEN_REPOSITORY)
     private readonly tokenRepo: IEmailVerificationTokenRepository,
     @Inject(USER_REPOSITORY) private readonly userRepo: IUserRepository,
+    @Inject(UNIVERSITY_REPOSITORY) private readonly universityRepo: IUniversityRepository,
   ) {}
 
   async execute(rawToken: string): Promise<VerifyEmailOutput> {
@@ -32,7 +34,31 @@ export class VerifyEmailUseCase {
     }
 
     await this.tokenRepo.markUsed(tokenRecord.id);
-    await this.userRepo.markEmailVerified(tokenRecord.userId);
+
+    const user = await this.userRepo.findById(tokenRecord.userId);
+    if (!user) {
+      // Token pointed at a missing/deleted user — treat as verified (idempotent, no leak).
+      return { message: 'Email verified successfully.' };
+    }
+
+    user.emailVerified = true;
+    user.emailVerifiedAt = new Date();
+
+    // Auto-promote a pending student whose email domain matches their selected
+    // partner university. "Other"/mismatch students stay pending (await CMS approval).
+    if (
+      user.accountType === 'student' &&
+      user.studentStatus === 'pending' &&
+      user.universityId
+    ) {
+      const university = await this.universityRepo.findById(user.universityId);
+      if (university && university.active && user.email.split('@')[1] === university.emailDomain) {
+        user.studentStatus = 'verified';
+        user.isVerifiedStudent = true;
+      }
+    }
+
+    await this.userRepo.save(user);
 
     return { message: 'Email verified successfully.' };
   }

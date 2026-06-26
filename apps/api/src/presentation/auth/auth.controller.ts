@@ -19,6 +19,7 @@ import { RefreshAccessTokenUseCase } from '@application/auth/refresh-token.use-c
 import { LogoutUseCase } from '@application/auth/logout.use-case';
 import { GetMeUseCase } from '@application/auth/get-me.use-case';
 import { ResendVerificationUseCase } from '@application/auth/resend-verification.use-case';
+import { ListUniversitiesUseCase } from '@application/auth/list-universities.use-case';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { EmailThrottlerGuard } from './guards/email-throttler.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -28,6 +29,7 @@ import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { VerifyEmailQueryDto, VerifyEmailResponseDto } from './dto/verify-email.dto';
 import { LoginDto, LoginResponseDto } from './dto/login.dto';
 import { MeResponseDto } from './dto/me.dto';
+import { UniversityListItemDto } from './dto/university.dto';
 
 const REFRESH_COOKIE = 'refresh_token';
 const COOKIE_OPTIONS = {
@@ -49,13 +51,22 @@ export class AuthController {
     private readonly logout: LogoutUseCase,
     private readonly getMe: GetMeUseCase,
     private readonly resendVerification: ResendVerificationUseCase,
+    private readonly listUniversities: ListUniversitiesUseCase,
   ) {}
+
+  @Get('universities')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'List partner universities', description: 'Active partner universities, alphabetical. Public — populates the signup university picker.' })
+  @ApiResponse({ status: 200, description: 'Partner university list.', type: [UniversityListItemDto] })
+  async universities(): Promise<UniversityListItemDto[]> {
+    return this.listUniversities.execute();
+  }
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Register a new student account', description: 'Accepts a university email address. A verification email is sent upon success.' })
+  @ApiOperation({ summary: 'Register a new account', description: 'Students (partner university or "Other") and non-students can register. A verification email is sent on success. Domain is never rejected; posting is gated later by verified-student status.' })
   @ApiResponse({ status: 201, description: 'Account created; verification email sent.', type: RegisterResponseDto })
-  @ApiBadRequestResponse({ description: 'Validation error or unsupported university domain' })
+  @ApiBadRequestResponse({ description: 'Validation error (invalid account type / missing university name)' })
   @ApiConflictResponse({ description: 'Email already registered' })
   async register(@Body() dto: RegisterDto): Promise<RegisterResponseDto> {
     return this.registerUser.execute({
@@ -63,6 +74,9 @@ export class AuthController {
       password: dto.password,
       firstName: dto.firstName,
       lastName: dto.lastName,
+      accountType: dto.accountType,
+      universityId: dto.universityId ?? null,
+      claimedUniversityName: dto.claimedUniversityName ?? null,
     });
   }
 

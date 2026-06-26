@@ -54,7 +54,13 @@ export class LoginUseCase {
       throw new UnauthorizedError('INVALID_CREDENTIALS', 'Invalid email or password.');
     }
 
-    const payload = { sub: user.id, role: user.role };
+    const payload = {
+      sub: user.id,
+      role: user.role,
+      accountType: user.accountType,
+      studentStatus: user.studentStatus,
+      isVerifiedStudent: user.isVerifiedStudent,
+    };
     const accessToken = this.tokenService.signAccessToken(payload);
     const refreshToken = this.tokenService.signRefreshToken(payload);
 

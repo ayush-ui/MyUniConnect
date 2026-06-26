@@ -38,20 +38,37 @@ created_at    TIMESTAMPTZ
 updated_at    TIMESTAMPTZ
 ```
 
-### `User`
+### `User`  *(Identity v2 additions marked ⬩ — migration pending)*
 ```
-id                  UUID PK
-email               TEXT NOT NULL UNIQUE
-password_hash       TEXT NOT NULL
-first_name          TEXT NOT NULL
-last_name           TEXT NOT NULL
-university_id       UUID FK → University
-email_verified      BOOLEAN DEFAULT false
-email_verified_at   TIMESTAMPTZ
-role                ENUM('student', 'admin') DEFAULT 'student'
-deleted_at          TIMESTAMPTZ          -- soft delete
-created_at          TIMESTAMPTZ
-updated_at          TIMESTAMPTZ
+id                     UUID PK
+email                  TEXT NOT NULL UNIQUE
+password_hash          TEXT NOT NULL
+first_name             TEXT NOT NULL
+last_name              TEXT NOT NULL
+university_id          UUID FK → University  ⬩ NOW NULLABLE (null for non-students & pending "Other")
+email_verified         BOOLEAN DEFAULT false
+email_verified_at      TIMESTAMPTZ
+account_type        ⬩ ENUM('student','non_student') NOT NULL DEFAULT 'student'
+student_status      ⬩ ENUM('none','pending','verified','rejected') NOT NULL DEFAULT 'none'
+is_verified_student ⬩ BOOLEAN DEFAULT false   -- derived gate (account_type=student & student_status=verified & email_verified)
+claimed_university_name ⬩ TEXT                 -- free text from the "Other (Not listed)" path
+role                   ENUM('student', 'admin') DEFAULT 'student'
+deleted_at             TIMESTAMPTZ          -- soft delete
+created_at             TIMESTAMPTZ
+updated_at             TIMESTAMPTZ
+```
+
+### `StudentVerificationRequest`  ⬩ *(new — feeds the future CMS approval queue)*
+```
+id                   UUID PK
+user_id              UUID FK → User
+claimed_university_name  TEXT NOT NULL
+email_domain         TEXT NOT NULL
+status               ENUM('pending','approved','rejected') DEFAULT 'pending'
+reviewed_by          UUID                  -- admin/CMS user (later)
+reviewed_at          TIMESTAMPTZ
+decision_note        TEXT
+created_at           TIMESTAMPTZ
 ```
 
 ### `EmailVerificationToken`
@@ -88,28 +105,53 @@ created_at  TIMESTAMPTZ
 
 ## Use Cases & Specs
 
-### UC-1.1 `RegisterUser`
+### UC-1.1 `RegisterUser`  *(REVISED for Identity v2 — see ARCHITECTURE "Identity & Account Model")*
 
-**Input:** `{ email, password, firstName, lastName }`
+> **Behaviour change:** v1 rejected any non-partner email domain (`UNIVERSITY_NOT_SUPPORTED`).
+> v2 **never rejects on domain** — non-students and "Other" students are valid accounts.
+> Posting is gated later by `isVerifiedStudent`, not at registration.
+
+**Input:** `{ email, password, firstName, lastName, accountType, universityId?, claimedUniversityName? }`
+- `accountType`: `'student' | 'non_student'` (required)
+- `universityId`: set when a student picks a partner university from the dropdown
+- `claimedUniversityName`: free text, required when a student picks **"Other (Not listed)"**
 
 **Flow:**
-1. Validate `email` format.
-2. Extract domain; query `universities` table for a match with `active = true`.
-3. If no match → throw `UNIVERSITY_NOT_SUPPORTED`.
-4. Check no existing non-deleted user with that email → throw `EMAIL_ALREADY_REGISTERED` if found.
-5. Hash password (bcrypt, cost 12).
-6. Create `User` record (`email_verified = false`).
-7. Generate a random 32-byte token; store its hash in `EmailVerificationToken` (expires in 24h).
-8. Send verification email (async, fire-and-forget — email service failure does not fail registration).
-9. Return `{ userId, message: "Check your email to verify your account" }`.
+1. Validate `email` format; validate password strength (`WEAK_PASSWORD`).
+2. Check no existing non-deleted user with that email → `EMAIL_ALREADY_REGISTERED`.
+3. Hash password (bcrypt, cost 12).
+4. Branch by `accountType`:
+   - **non_student** → create user `accountType=non_student`, `studentStatus=none`, `universityId=null`, `isVerifiedStudent=false`.
+   - **student + partner `universityId`** → load that university. Compare email domain to `university.emailDomain`:
+     - match → `studentStatus=pending` now; becomes `verified` automatically **on email verification** (UC-1.2). Link `universityId`.
+     - mismatch → `studentStatus=pending`, create a `StudentVerificationRequest` for manual review. (Decision: accept + review rather than hard-reject. Revisit.)
+   - **student + "Other"** → require `claimedUniversityName` (`UNIVERSITY_NAME_REQUIRED` if missing). Create user `accountType=student`, `studentStatus=pending`, `universityId=null`; create a `StudentVerificationRequest{ userId, claimedUniversityName, emailDomain }`.
+5. Create `User` (`emailVerified=false`).
+6. Generate 32-byte token; store SHA-256 hash in `EmailVerificationToken` (24h TTL).
+7. Send verification email (fire-and-forget).
+8. Return `{ userId, accountType, studentStatus, message }`.
 
-**Error codes:**
-- `INVALID_EMAIL_FORMAT`
-- `UNIVERSITY_NOT_SUPPORTED`
-- `EMAIL_ALREADY_REGISTERED`
-- `WEAK_PASSWORD`
+**Error codes:** `INVALID_EMAIL_FORMAT`, `EMAIL_ALREADY_REGISTERED`, `WEAK_PASSWORD`, `INVALID_ACCOUNT_TYPE`, `UNIVERSITY_NAME_REQUIRED`.
+*(Removed: `UNIVERSITY_NOT_SUPPORTED` — no longer a registration error.)*
 
-**Spec file:** `apps/api/src/application/auth/register-user.use-case.spec.ts`
+**Spec file:** `apps/api/src/application/auth/register-user.use-case.spec.ts` *(to be revised + expanded)*
+
+---
+
+### UC-1.7 `ListPartnerUniversities` *(new)*
+
+**Input:** none. **Flow:** return `universities` where `active = true`, fields `{ id, name }`, alphabetical.
+**Endpoint:** `GET /auth/universities` (public — needed to populate the signup dropdown).
+**Spec file:** `apps/api/src/application/auth/list-universities.use-case.spec.ts`
+
+---
+
+### UC-1.8 `AuthorizeStudentPosting` (guard) *(new)*
+
+Not a use case but a cross-cutting **`VerifiedStudentGuard`**: rejects create/post actions with `403 STUDENT_VERIFICATION_REQUIRED` unless `isVerifiedStudent === true`. Applied to marketplace + housing create endpoints. Requires `isVerifiedStudent` on the JWT payload and `/auth/me`.
+**Spec file:** `apps/api/src/presentation/auth/guards/verified-student.guard.spec.ts`
+
+> **Email-domain detection** (matching email domain → partner university for the automated verified path) is the *"sort student vs non-student / partner emails"* work the product owner flagged as not-yet-done. It lives in UC-1.1 step 4 + UC-1.2 promotion.
 
 ---
 
@@ -123,7 +165,8 @@ created_at  TIMESTAMPTZ
 3. If invalid or expired → throw `INVALID_OR_EXPIRED_TOKEN`.
 4. Mark `used_at = NOW()` on token.
 5. Mark `user.email_verified = true`, `user.email_verified_at = NOW()`.
-6. Return `{ message: "Email verified successfully" }`.
+6. **(Identity v2)** If the user is a `student` with `studentStatus=pending` **and** a linked partner `universityId` whose `emailDomain` matches the verified email → promote to `studentStatus=verified` (`isVerifiedStudent` becomes true). "Other"/mismatch students stay `pending` (await CMS approval).
+7. Return `{ message: "Email verified successfully" }`.
 
 **Error codes:**
 - `INVALID_OR_EXPIRED_TOKEN`
@@ -216,11 +259,14 @@ created_at  TIMESTAMPTZ
 | POST | `/auth/login` | None | UC-1.4 |
 | POST | `/auth/refresh` | Cookie | UC-1.5 |
 | POST | `/auth/logout` | Cookie | UC-1.6 |
-| GET | `/auth/me` | Bearer | Returns current user profile |
+| GET | `/auth/me` | Bearer | Profile — ⬩ now incl. `accountType`, `studentStatus`, `isVerifiedStudent`, `university` |
+| GET | `/auth/universities` ⬩ | None | UC-1.7 — partner list for signup dropdown |
 
 ---
 
 ## Frontend Flows
+
+> ⚠️ This section describes the original Next.js web pages, which were **dropped** (the app is mobile-only). The live flows are in the Expo app; the **Identity v2 signup redesign** is specified in `docs/mobile/UI_BRIEF-account-types-and-signup.md`. Kept below for historical reference.
 
 ### Registration Page (`/register`)
 - Fields: First Name, Last Name, Email, Password, Confirm Password
@@ -243,10 +289,22 @@ created_at  TIMESTAMPTZ
 
 ---
 
-## Acceptance Criteria
+## Acceptance Criteria — Identity v2 *(planned, not yet built)*
+
+- [ ] Signup asks "Are you a student?"; non-students can create an account and browse, but never see a working post action
+- [ ] Students choose a partner university from a list, or **"Other (Not listed)"** with a free-text university name
+- [x] Registration no longer rejects on email domain (no `UNIVERSITY_NOT_SUPPORTED`) — *2026-06-26*
+- [x] Partner student whose email domain matches → becomes `verified` automatically on email verification — *2026-06-26*
+- [x] "Other"/mismatch student → `pending`, a `StudentVerificationRequest` row is created, and they cannot post — *2026-06-26*
+- [x] `POST /marketplace/listings` returns `403 STUDENT_VERIFICATION_REQUIRED` unless `isVerifiedStudent` — *2026-06-26* *(housing create: when Housing is built, Phase 2)*
+- [x] `/auth/me` exposes `accountType`, `studentStatus`, `isVerifiedStudent`, `university` — *2026-06-26*
+- [x] `GET /auth/universities` returns the active partner list — *2026-06-26*
+- [ ] Verified-student badge renders per state (verified / pending / none) *(mobile — pending)*
+
+## Acceptance Criteria — Iteration 1 *(done)*
 
 - [x] User with @tu-ilmenau.de email can register and receives a verification email *(email send pending Resend domain verification — DEBT-011)*
-- [x] User with unsupported domain sees a clear error message *(422 UNIVERSITY_NOT_SUPPORTED)*
+- [x] ~~User with unsupported domain sees a clear error message (422 UNIVERSITY_NOT_SUPPORTED)~~ — **superseded by Identity v2** (domains are no longer rejected; non-/other-students are valid accounts)
 - [x] Verification link works once; second click shows "link expired or already used"
 - [x] Expired token (>24h) shows "link expired" with option to resend *(POST /auth/resend-verification)*
 - [x] Unverified user cannot call any authenticated endpoint (401) *(EMAIL_NOT_VERIFIED on login)*

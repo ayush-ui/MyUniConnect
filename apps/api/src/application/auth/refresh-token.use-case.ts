@@ -39,7 +39,13 @@ export class RefreshAccessTokenUseCase {
 
     await this.refreshTokenRepo.revoke(stored.id);
 
-    const payload = { sub: user.id, role: user.role };
+    const payload = {
+      sub: user.id,
+      role: user.role,
+      accountType: user.accountType,
+      studentStatus: user.studentStatus,
+      isVerifiedStudent: user.isVerifiedStudent,
+    };
     const accessToken = this.tokenService.signAccessToken(payload);
     const newRefreshToken = this.tokenService.signRefreshToken(payload);
 

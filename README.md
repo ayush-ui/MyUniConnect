@@ -102,8 +102,21 @@ Key variables:
 
 ```bash
 pnpm --filter api db:migrate   # runs prisma migrate dev
-pnpm --filter api db:seed      # seeds the universities table
+pnpm --filter api db:seed      # seeds the universities + categories (reference data)
+pnpm --filter api db:seed:dev  # seeds fixed, log-in-able dev accounts (local only)
 ```
+
+#### Dev test accounts (`db:seed:dev`)
+
+Idempotent — re-running resets these accounts (handy if you forget the password). **Local only; never run against production.** All three share the password **`Test1234!`**:
+
+| Email | State | In-app behaviour |
+|-------|-------|------------------|
+| `test.student@tu-ilmenau.de` | Verified student | Browse **and** post |
+| `test.pending@tu-ilmenau.de` | Pending student ("Other") | Browse; posting locked ("under review") |
+| `test.visitor@gmail.com` | Non-student | Browse; posting locked ("visitors can't post") |
+
+> `db:seed` (reference data) stays separate from `db:seed:dev` (accounts) so the integration-test database is never polluted with fixed users.
 
 ### 5. Start the API
 
